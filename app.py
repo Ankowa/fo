@@ -185,7 +185,7 @@ class OscillatorsSimulation:
 
     def not_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
-        Calculates velocities of all masses being part of all collisions
+        Calculates velocities of all masses being part of all nonelastic collisions
         Math: (for each collision): calculate total momentum, then calculate the velocity
         of the "new" mass consisting of all the masses and substitute.
         Also substitute the positions of all the masses to one position (in order to
@@ -205,9 +205,28 @@ class OscillatorsSimulation:
 
     def elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
-        TODO here math for that
+        ONLY SUPPORTS 2 MASS COLLISION
+        Calculates velocities of all masses being part of all elastic collisions
+        Math: (for each collision): calc velocity using math from wikipedia:
+        https://en.wikipedia.org/wiki/Elastic_collision
+        Also substitute the positions of all the masses to one position (in order to
+        avoid mess like mass on the 4th place becoming mass on the 5th place and vice
+        versa if such collision occurrs)
         """
-        ...
+        for collision in collisions:
+            assert len(collision) == 2, "ONLY SUPPORTS 2 MASS COLLISION"
+
+            m1, m2 = self.oscillator_masses[collision]
+            u1, u2 = self.current_state.oscillators_v[collision]
+            # math from wiki
+
+            v1 = u1 * (m1 - m2) / (m1 + m2) + u2 * 2 * m2 / (m1 + m2)
+            v2 = -u2 * (m1 - m2) / (m1 + m2) + u2 * 2 * m1 / (m1 + m2)
+
+            self.current_state.oscillators_v[collision] = [v1, v2]
+            self.current_state.oscillators_x[collision] = np.mean(
+                self.current_state.oscillators_x[collision]
+            )  # group new position
 
     def calc_next_state(self):
         oscillators_a = np.array(
