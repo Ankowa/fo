@@ -24,7 +24,7 @@ def create_ani():
     v20 = 0
     x10 = 2
     x20 = 9
-    dt = 0.001
+    dt = 0.0001
     x1i, x2i, v1i, v2i, f11i, f12i, f21i, f22i, ti = [], [], [], [], [], [], [], [], np.arange(0, 5, dt)
 
     x1, x2 = x10, x20
@@ -73,6 +73,6 @@ def create_ani():
         ax.plot([x1i[i], (x2i[i]+x1i[i])/2], [0, 0], c=get_color(f12i[i], fmax, fmin))
         ax.plot([(x2i[i]+x1i[i])/2, x2i[i]], [0, 0], c=get_color(f22i[i], fmax, fmin))
         ax.plot([x2i[i], l], [0, 0], c=get_color(f21i[i], fmax, fmin))
-    ani = animation.FuncAnimation(fig, animate, frames=range(0, len(ti), len(ti)//1000))
+    ani = animation.FuncAnimation(fig, animate, frames=range(0, len(ti), len(ti)//50))
     plt.close()
     return ani
