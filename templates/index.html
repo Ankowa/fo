@@ -8,47 +8,53 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="container">
-    <h1>Spring Simulation</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <h1>Spring Simulation</h1>
 
-    <form>
-        <label for="number_of_oscillators">Number of Oscillators:</label>
-        <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50">
+            <form>
+                <label for="number_of_oscillators">Number of Oscillators:</label>
+                <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50">
 
-        <div id="oscillatorInputs">
-            <!-- Oscillator inputs will be dynamically added here -->
+                <div id="oscillatorInputs">
+                    <!-- Oscillator inputs will be dynamically added here -->
+                </div>
+
+                <label for="elastic_collisions">Elastic Collisions:</label>
+                <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+
+                <button type="submit" class="btn btn-primary">Start</button>
+                <button type="button" class="btn btn-secondary">Stop</button>
+                <button type="button" class="btn btn-danger">Reset</button>
+            </form>
+
+            <div>
+                <h2>Moving Function Animation</h2>
+                {{ animation|safe }}
+            </div>
         </div>
 
-        <label for="elastic_collisions">Elastic Collisions:</label>
-        <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+        <div class="col-md-6" style="max-height: 100vh; overflow-y: auto;">
+            <div >
+                <h2>Oscillator Phases</h2>
+                <img src="data:image/png;base64,{{ oscillator_phases_plot }}" alt="Oscillator Phases" class="img-fluid">
+            </div>
 
-        <button type="submit" class="btn btn-primary">Start</button>
-        <button type="button" class="btn btn-secondary">Stop</button>
-        <button type="button" class="btn btn-danger">Reset</button>
-    </form>
+            <div>
+                <h2>Forces Acting on Each Oscillator</h2>
+                <img src="data:image/png;base64,{{ forces_plot }}" alt="Forces Acting on Each Oscillator" class="img-fluid">
+            </div>
 
-    <div>
-        <h2>Moving Function Animation</h2>
-        {{ animation|safe }}
-    </div>
+            <div>
+                <h2>Velocities</h2>
+                <img src="data:image/png;base64,{{ velocities_plot }}" alt="Velocities" class="img-fluid">
+            </div>
 
-    <div>
-        <h2>Oscillator Phases</h2>
-        <img src="data:image/png;base64,{{ oscillator_phases_plot }}" alt="Oscillator Phases">
-    </div>
-
-    <div>
-        <h2>Forces Acting on Each Oscillator</h2>
-        <img src="data:image/png;base64,{{ forces_plot }}" alt="Forces Acting on Each Oscillator">
-    </div>
-
-    <div>
-        <h2>Velocities</h2>
-        <img src="data:image/png;base64,{{ velocities_plot }}" alt="Velocities">
-    </div>
-
-    <div>
-        <h2>Positions</h2>
-        <img src="data:image/png;base64,{{ positions_plot }}" alt="Positions">
+            <div>
+                <h2>Positions</h2>
+                <img src="data:image/png;base64,{{ positions_plot }}" alt="Positions" class="img-fluid">
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -66,71 +72,87 @@
         .position-slider {
             margin-top: 0;
         }
+
+        .img-fluid {
+            width: 100%;
+            height: auto;
+        }
     </style>
     <script>
-        document.getElementById('number_of_oscillators').addEventListener('change', function () {
-            const numberOfOscillators = this.value;
-            const oscillatorInputsDiv = document.getElementById('oscillatorInputs');
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initial input generation when the page loads
+            generateOscillatorInputs();
 
-            // Clear existing inputs
-            oscillatorInputsDiv.innerHTML = '';
+            document.getElementById('number_of_oscillators').addEventListener('change', function () {
+                // Call the input generation logic when the number of oscillators changes
+                generateOscillatorInputs();
+            });
 
-            // Generate new inputs based on the selected number of oscillators
-            for (let i = 0; i < numberOfOscillators; i++) {
-                // Oscillator Input Row
-                const oscillatorInputDiv = document.createElement('div');
-                oscillatorInputDiv.className = 'oscillator-input';
+            function generateOscillatorInputs() {
+                const numberOfOscillators = document.getElementById('number_of_oscillators').value;
+                const oscillatorInputsDiv = document.getElementById('oscillatorInputs');
 
-                // Mass Input
-                const massLabel = document.createElement('label');
-                massLabel.innerText = `Mass ${i + 1}:`;
-                const massInput = document.createElement('input');
-                massInput.type = 'number';
-                massInput.name = `mass_${i + 1}`;
-                massInput.placeholder = `Mass ${i + 1}`;
-                oscillatorInputDiv.appendChild(massLabel);
-                oscillatorInputDiv.appendChild(massInput);
+                // Clear existing inputs
+                oscillatorInputsDiv.innerHTML = '';
 
-                // Damping Coefficient Input
-                const dampingLabel = document.createElement('label');
-                dampingLabel.innerText = `Damping Coefficient ${i + 1}:`;
-                const dampingInput = document.createElement('input');
-                dampingInput.type = 'number';
-                dampingInput.name = `damping_${i + 1}`;
-                dampingInput.placeholder = `Damping Coefficient ${i + 1}`;
-                oscillatorInputDiv.appendChild(dampingLabel);
-                oscillatorInputDiv.appendChild(dampingInput);
+                // Generate new inputs based on the selected number of oscillators
+                for (let i = 0; i < numberOfOscillators; i++) {
+                    // Oscillator Input Row
+                    const oscillatorInputDiv = document.createElement('div');
+                    oscillatorInputDiv.className = 'oscillator-input';
 
-                // Position Slider and Label
-                const positionSliderDiv = document.createElement('div');
-                positionSliderDiv.className = 'position-slider';
+                    // Mass Input
+                    const massLabel = document.createElement('label');
+                    massLabel.innerText = `Mass ${i + 1}:`;
+                    const massInput = document.createElement('input');
+                    massInput.type = 'number';
+                    massInput.name = `mass_${i + 1}`;
+                    massInput.placeholder = `Mass ${i + 1}`;
+                    oscillatorInputDiv.appendChild(massLabel);
+                    oscillatorInputDiv.appendChild(massInput);
 
-                const positionLabel = document.createElement('label');
-                positionLabel.innerText = `Oscillator ${i + 1} position:`;
+                    // Damping Coefficient Input
+                    const dampingLabel = document.createElement('label');
+                    dampingLabel.innerText = `Damping Coefficient ${i + 1}:`;
+                    const dampingInput = document.createElement('input');
+                    dampingInput.type = 'text';
+                    dampingInput.name = `damping_${i + 1}`;
+                    dampingInput.placeholder = `Damping Coefficient ${i + 1}`;
+                    dampingInput.pattern = "[0-9]+(\.[0-9]+)?";
+                    oscillatorInputDiv.appendChild(dampingLabel);
+                    oscillatorInputDiv.appendChild(dampingInput);
 
-                const positionSliderValue = document.createElement('span');
-                positionSliderValue.className = 'slider-value';
-                positionSliderValue.innerText = '0.5'; // Default value
+                    // Position Slider and Label
+                    const positionSliderDiv = document.createElement('div');
+                    positionSliderDiv.className = 'position-slider';
 
-                const positionSlider = document.createElement('input');
-                positionSlider.type = 'range';
-                positionSlider.min = '0';
-                positionSlider.max = '500';
-                positionSlider.step = '0.01';
-                positionSlider.name = `position_${i + 1}`;
-                positionSlider.value = '0.5';
+                    const positionLabel = document.createElement('label');
+                    positionLabel.innerText = `Oscillator ${i + 1} position:`;
 
-                positionSlider.addEventListener('input', function () {
-                    positionSliderValue.innerText = this.value;
-                });
+                    const positionSliderValue = document.createElement('span');
+                    positionSliderValue.className = 'slider-value';
+                    positionSliderValue.innerText = '0.5'; // Default value
 
-                positionSliderDiv.appendChild(positionLabel);
-                positionSliderDiv.appendChild(positionSlider);
-                positionSliderDiv.appendChild(positionSliderValue);
+                    const positionSlider = document.createElement('input');
+                    positionSlider.type = 'range';
+                    positionSlider.min = '0';
+                    positionSlider.max = '500';
+                    positionSlider.step = '0.01';
+                    positionSlider.name = `position_${i + 1}`;
+                    positionSlider.value = '0.5';
 
-                oscillatorInputDiv.appendChild(positionSliderDiv);
+                    positionSlider.addEventListener('input', function () {
+                        positionSliderValue.innerText = this.value;
+                    });
 
-                oscillatorInputsDiv.appendChild(oscillatorInputDiv);
+                    positionSliderDiv.appendChild(positionLabel);
+                    positionSliderDiv.appendChild(positionSlider);
+                    positionSliderDiv.appendChild(positionSliderValue);
+
+                    oscillatorInputDiv.appendChild(positionSliderDiv);
+
+                    oscillatorInputsDiv.appendChild(oscillatorInputDiv);
+                }
             }
         });
     </script>
