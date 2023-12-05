@@ -91,6 +91,7 @@ class OscillatorsSimulation:
 
         self.elastic_collisions = elastic_collisions
         assert damping >= 0, "Can't get negative damping"
+        self.damping = damping
 
     @cached_property
     def get_spring_lens(self):
@@ -137,6 +138,10 @@ class OscillatorsSimulation:
         self.current_state.springs_f[right_spring_id] = right_spring_force
         # Supposition: X axis starts at the left wall and is positive on the right side from it
         oscillator_force = right_spring_force - left_spring_force
+
+        # ref: https://tomgrad.fizyka.pw.edu.pl/foi/01-drgania/#/1
+        damping_force = self.current_state.oscillators_v[oscillator_id] * self.damping
+        oscillator_force -= damping_force
         return oscillator_force
 
     @staticmethod
