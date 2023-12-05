@@ -42,8 +42,6 @@ class OscillatorsSimulation:
         elastic_collisions: bool = False,
         damping: float = 0.0,
     ):
-        assert damping >= 0, "Can't get negative damping"
-
         self.num_oscillators = len(oscillator_masses)
         self.num_springs = self.num_oscillators + 1
 
@@ -92,6 +90,7 @@ class OscillatorsSimulation:
         self.break_states_generator = False
 
         self.elastic_collisions = elastic_collisions
+        assert damping >= 0, "Can't get negative damping"
 
     @cached_property
     def get_spring_lens(self):
@@ -184,7 +183,7 @@ class OscillatorsSimulation:
         assert not np.array_equal(groups, [[]]), "No collisions found"
         return groups
 
-    def not_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
+    def calc_not_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
         Calculates velocities of all masses being part of all nonelastic collisions
         Math: (for each collision): calculate total momentum, then calculate the velocity
@@ -204,7 +203,7 @@ class OscillatorsSimulation:
                 self.current_state.oscillators_x[collision]
             )  # group new position
 
-    def elastic_collisions(self, collisions: list[np.ndarray]) -> None:
+    def calc_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
         ONLY SUPPORTS 2 MASS COLLISION
         Calculates velocities of all masses being part of all elastic collisions
@@ -248,9 +247,9 @@ class OscillatorsSimulation:
         ):  # masses' x coordinates are not sorted → collisions
             col_groups = self.get_indices_of_collisions(tmp_x)
             if self.elastic_collisions:
-                self.elastic_collisions(col_groups)
+                self.calc_elastic_collisions(col_groups)
             else:
-                self.not_elastic_collisions(col_groups)
+                self.calc_not_elastic_collisions(col_groups)
         else:
             self.current_state.oscillators_x += (
                 self.current_state.oscillators_v * self.time_step
