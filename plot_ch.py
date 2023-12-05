@@ -1,20 +1,31 @@
 from flask import Flask, render_template
 import random
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from io import BytesIO
 import base64
+
+from create_ani import create_ani
 
 app = Flask(__name__)
 
 # Mockup data for demonstration
 def generate_plot():
-    x = range(100)
-    y = [random.uniform(-1, 1) for _ in x]
+    x = list(range(100))
+    
+    # Generate three sets of mock data
+    y1 = [random.uniform(-1, 1) for _ in x]
+    y2 = [random.uniform(-1, 1) for _ in x]
+    y3 = [random.uniform(-1, 1) for _ in x]
 
-    plt.plot(x, y)
+    plt.plot(x, y1, label='Function 1')
+    plt.plot(x, y2, label='Function 2')
+    plt.plot(x, y3, label='Function 3')
+    
     plt.title("Mockup Data")
     plt.xlabel("Time")
     plt.ylabel("Value")
+    plt.legend()
 
     # Save plot to a BytesIO object
     img = BytesIO()
@@ -25,6 +36,8 @@ def generate_plot():
     # Encode the image to base64 for embedding in HTML
     return base64.b64encode(img.getvalue()).decode('utf-8')
 
+
+# Flask route
 @app.route('/')
 def index():
     # Mockup data for the template
@@ -40,6 +53,9 @@ def index():
     velocities_plot = generate_plot()
     positions_plot = generate_plot()
 
+    # Create Matplotlib Animation
+    ani = create_ani()
+
     return render_template('index.html', 
                            number_of_oscillators=number_of_oscillators,
                            masses=masses,
@@ -49,7 +65,8 @@ def index():
                            oscillator_phases_plot=oscillator_phases_plot,
                            forces_plot=forces_plot,
                            velocities_plot=velocities_plot,
-                           positions_plot=positions_plot)
+                           positions_plot=positions_plot,
+                           animation=ani.to_jshtml())
 
 if __name__ == '__main__':
     app.run(debug=True)
