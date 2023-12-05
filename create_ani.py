@@ -73,6 +73,6 @@ def create_ani():
         ax.plot([x1i[i], (x2i[i]+x1i[i])/2], [0, 0], c=get_color(f12i[i], fmax, fmin))
         ax.plot([(x2i[i]+x1i[i])/2, x2i[i]], [0, 0], c=get_color(f22i[i], fmax, fmin))
         ax.plot([x2i[i], l], [0, 0], c=get_color(f21i[i], fmax, fmin))
-    ani = animation.FuncAnimation(fig, animate, frames=range(0, len(ti), len(ti)//50))
+    ani = animation.FuncAnimation(fig, animate, frames=range(0, len(ti), len(ti)//10))
     plt.close()
     return ani

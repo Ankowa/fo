@@ -8,52 +8,58 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="container">
-    <div class="row">
-        <div class="col-md-6">
-            <h1>Spring Simulation</h1>
+    <div class="card my-5" style="width: 95%;">
+        <div class="card-body">
 
-            <form>
-                <label for="number_of_oscillators">Number of Oscillators:</label>
-                <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50">
+            <div class="row">
+                <div class="col-md-6">
+                    <h1>Spring Simulation</h1>
 
-                <div id="oscillatorInputs">
-                    <!-- Oscillator inputs will be dynamically added here -->
+                    <form>
+                        <label for="number_of_oscillators">Number of Oscillators:</label>
+                        <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50">
+
+                        <div id="oscillatorInputs">
+                            <!-- Oscillator inputs will be dynamically added here -->
+                        </div>
+
+                        <label for="elastic_collisions">Elastic Collisions:</label>
+                        <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+
+                        <button type="submit" class="btn btn-primary">Start</button>
+                        <button type="button" class="btn btn-secondary">Stop</button>
+                        <button type="button" class="btn btn-danger">Reset</button>
+                    </form>
+
+                    <div>
+                        <h2>Moving Function Animation</h2>
+                        {{ animation|safe }}
+                    </div>
                 </div>
 
-                <label for="elastic_collisions">Elastic Collisions:</label>
-                <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+                <div class="col-md-6" style="height: 70rem; padding-left: 3rem; overflow-y: auto;">
+                    <div >
+                        <h2>Oscillator Phases</h2>
+                        <img src="data:image/png;base64,{{ oscillator_phases_plot }}" alt="Oscillator Phases" class="img-fluid">
+                    </div>
 
-                <button type="submit" class="btn btn-primary">Start</button>
-                <button type="button" class="btn btn-secondary">Stop</button>
-                <button type="button" class="btn btn-danger">Reset</button>
-            </form>
+                    <div>
+                        <h2>Forces Acting on Each Oscillator</h2>
+                        <img src="data:image/png;base64,{{ forces_plot }}" alt="Forces Acting on Each Oscillator" class="img-fluid">
+                    </div>
 
-            <div>
-                <h2>Moving Function Animation</h2>
-                {{ animation|safe }}
-            </div>
-        </div>
+                    <div>
+                        <h2>Velocities</h2>
+                        <img src="data:image/png;base64,{{ velocities_plot }}" alt="Velocities" class="img-fluid">
+                    </div>
 
-        <div class="col-md-6" style="max-height: 100vh; overflow-y: auto;">
-            <div >
-                <h2>Oscillator Phases</h2>
-                <img src="data:image/png;base64,{{ oscillator_phases_plot }}" alt="Oscillator Phases" class="img-fluid">
-            </div>
-
-            <div>
-                <h2>Forces Acting on Each Oscillator</h2>
-                <img src="data:image/png;base64,{{ forces_plot }}" alt="Forces Acting on Each Oscillator" class="img-fluid">
+                    <div>
+                        <h2>Positions</h2>
+                        <img src="data:image/png;base64,{{ positions_plot }}" alt="Positions" class="img-fluid">
+                    </div>
+                </div>
             </div>
 
-            <div>
-                <h2>Velocities</h2>
-                <img src="data:image/png;base64,{{ velocities_plot }}" alt="Velocities" class="img-fluid">
-            </div>
-
-            <div>
-                <h2>Positions</h2>
-                <img src="data:image/png;base64,{{ positions_plot }}" alt="Positions" class="img-fluid">
-            </div>
         </div>
     </div>
 
