@@ -38,7 +38,11 @@ class OscillatorsSimulation:
         springs_default_lens,
         springs_current_lens=None,
         spring_constants=None,
+        elastic_collisions=False,
+        damping=0,
     ):
+        assert damping >= 0, "Can't get negative damping"
+
         self.num_springs = len(springs_default_lens)
         self.num_oscillators = len(oscillator_masses)
 
@@ -86,6 +90,8 @@ class OscillatorsSimulation:
         )
         self.break_states_generator = False
 
+        self.elastic_collisions = elastic_collisions
+
     @cached_property
     def get_spring_lens(self):
         return np.concatenate(
@@ -113,7 +119,9 @@ class OscillatorsSimulation:
             return (1, 1 - f / fmin, 0)
 
     def get_spring_force(self, spring_id):
-        # Force is negative if spring is currently shorter than by default -> It requires to ALWAYS suppose (when designing forces equations), that forces vectors are directed as if springs were stretched out
+        # Force is negative if spring is currently shorter than by default ->
+        # It requires to ALWAYS suppose (when designing forces equations),
+        # that forces vectors are directed as if springs were stretched out
         spring_len_diff = (
             self.spring_default_lens[spring_id] - self.get_spring_lens[spring_id]
         )
@@ -131,6 +139,45 @@ class OscillatorsSimulation:
         oscillator_force = right_spring_force - left_spring_force
         return oscillator_force
 
+    @staticmethod
+    def get_indices_of_collisions(x: np.ndarray) -> np.ndarray:
+        """
+        Calculates indices of collisions. Math:
+        1.  calculates max from the left, min from the right for each element
+            x = [1 2 5 3 4 2 8], lmax = [1 2 5 5 5 5 8], rmin = [1 2 2 2 2 2 8]
+            expr = [T T F F F F T]
+        2.  catches all instances of masses being in the same spot as other masses
+            e.g. x = [1 2 5 3 4 2 8] → uni, cts = [1 2 3 4 5 8], [1 2 1 1 1 1]
+            expr → [T F T T T F T]
+        3.  combine with above: [T F F F F F T]
+            where F = collision
+        """
+        indices = np.ones_like(x, dtype=bool)
+
+        # 1
+        left_max = np.maximum.accumulate(x)
+        right_min = np.minimum.accumulate(x[::-1])[::-1]
+
+        indices = indices & ((x >= left_max) & (x <= right_min))
+
+        # 2 & 3
+        uni, cnts = np.unique(x, return_counts=True)
+        indices = indices & np.isin(x, uni[cnts == 1])
+
+        return np.arange(len(x))[~indices]
+
+    def not_elastic_collisions(self, indices: np.ndarray) -> None:
+        """
+        Resets velocities of all elements of collisions to 0
+        """
+        self.current_state.oscillators_v[indices] = 0
+
+    def elastic_collisions(self, indices: np.ndarray) -> None:
+        """
+        TODO here math for that
+        """
+        ...
+
     def calc_next_state(self):
         oscillators_a = np.array(
             [
@@ -140,6 +187,20 @@ class OscillatorsSimulation:
             float,
         )
         self.current_state.oscillators_v += oscillators_a * self.time_step
+        tmp_x = (
+            self.current_state.oscillators_x
+            + self.current_state.oscillators_v * self.time_step
+        )
+
+        if ~np.all(
+            tmp_x[:-1] < tmp_x[1:]
+        ):  # masses' x coordinates are not sorted → collisions
+            col_indices = self.get_indices_of_collisions(tmp_x)
+            if self.elastic_collisions:
+                self.elastic_collisions(col_indices)
+            else:
+                self.not_elastic_collisions(col_indices)
+
         self.current_state.oscillators_x += (
             self.current_state.oscillators_v * self.time_step
         )
