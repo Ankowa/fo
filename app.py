@@ -133,9 +133,18 @@ class OscillatorsSimulation:
         left_spring_id, right_spring_id = self.get_neighbor_springs_ids(oscillator_id)
         left_spring_force = self.get_spring_force(left_spring_id)
         right_spring_force = self.get_spring_force(right_spring_id)
+
         # Only necessary for the first spring of all - could be improved
         self.current_state.springs_f[left_spring_id] = left_spring_force
         self.current_state.springs_f[right_spring_id] = right_spring_force
+
+        # for the springs on the walls we utilize all their force on the oscillators
+        # for others, force is distributed between both ends, therefore we divide by 2
+        if oscillator_id != 0:
+            left_spring_force *= 0.5
+        if oscillator_id != (self.num_oscillators - 1):
+            right_spring_force *= 0.5
+
         # Supposition: X axis starts at the left wall and is positive on the right side from it
         oscillator_force = right_spring_force - left_spring_force
 
