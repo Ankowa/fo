@@ -9,16 +9,16 @@ from matplotlib.animation import FuncAnimation
 app = Flask(__name__)
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/animation')
+@app.route("/animation")
 def animation():
     os = OscillatorsSimulation([2, 2], [2, 2, 2], [1, 4, 1])
     ani = os.create_animation()
-    return Response(ani.to_jshtml(), content_type='text/html')
+    return Response(ani.to_jshtml(), content_type="text/html")
 
 
 class OscillatorsSimulation:
@@ -32,29 +32,41 @@ class OscillatorsSimulation:
         oscillators_v: np.ndarray
         springs_f: np.ndarray
 
-    def __init__(self, oscillator_masses, springs_default_lens, springs_current_lens=None, spring_constants=None):
-
+    def __init__(
+        self,
+        oscillator_masses,
+        springs_default_lens,
+        springs_current_lens=None,
+        spring_constants=None,
+    ):
         self.num_springs = len(springs_default_lens)
         self.num_oscillators = len(oscillator_masses)
 
         # TODO: extend support - if added no need for equilibrium springs lens
         if spring_constants is None:
-            spring_constants = [self.SPRING_BASE_K, ] * self.num_springs
+            spring_constants = [
+                self.SPRING_BASE_K,
+            ] * self.num_springs
         if len(set(spring_constants)) != 1:
             raise NotImplementedError(
-                "When calculating equilibrium point from ks is added, different values of springs ks will be allowed")
+                "When calculating equilibrium point from ks is added, different values of springs ks will be allowed"
+            )
 
         if springs_current_lens is None:
-            springs_current_lens = [self.SPRING_BASE_LEN, ] * self.num_springs
+            springs_current_lens = [
+                self.SPRING_BASE_LEN,
+            ] * self.num_springs
         elif len(springs_current_lens) != self.num_springs:
             raise ValueError(
-                f"Different numbers of string constants and strings lens. Constants: {self.num_springs}. Lens: {len(springs_current_lens)}")
+                f"Different numbers of string constants and strings lens. Constants: {self.num_springs}. Lens: {len(springs_current_lens)}"
+            )
 
         self.total_length = sum(springs_current_lens)
 
         if self.num_springs != self.num_oscillators + 1:
             raise ValueError(
-                f"Invalid number of springs or oscillators. Springs number: {self.num_springs}. Oscillators number: {self.num_oscillators}")
+                f"Invalid number of springs or oscillators. Springs number: {self.num_springs}. Oscillators number: {self.num_oscillators}"
+            )
 
         self.oscillator_masses = np.array(oscillator_masses, float)
         self.spring_constants = np.array(spring_constants, float)
@@ -69,14 +81,20 @@ class OscillatorsSimulation:
         x = np.cumsum(springs_current_lens[:-1], dtype=float)  # X Coordinates
         v = np.zeros(self.num_oscillators)  # Velocities
 
-        self.current_state = self.OscillatorsState(x, v, np.zeros(self.spring_default_lens.shape, float))
+        self.current_state = self.OscillatorsState(
+            x, v, np.zeros(self.spring_default_lens.shape, float)
+        )
         self.break_states_generator = False
 
     @cached_property
     def get_spring_lens(self):
-        return (np.concatenate(
-            [self.current_state.oscillators_x, np.array([self.total_length], float)]) - np.concatenate(
-            [np.array([OscillatorsSimulation.LEFT_WALL_X_CORD], float), self.current_state.oscillators_x])
+        return np.concatenate(
+            [self.current_state.oscillators_x, np.array([self.total_length], float)]
+        ) - np.concatenate(
+            [
+                np.array([OscillatorsSimulation.LEFT_WALL_X_CORD], float),
+                self.current_state.oscillators_x,
+            ]
         )
 
     @staticmethod
@@ -96,7 +114,9 @@ class OscillatorsSimulation:
 
     def get_spring_force(self, spring_id):
         # Force is negative if spring is currently shorter than by default -> It requires to ALWAYS suppose (when designing forces equations), that forces vectors are directed as if springs were stretched out
-        spring_len_diff = self.spring_default_lens[spring_id] - self.get_spring_lens[spring_id]
+        spring_len_diff = (
+            self.spring_default_lens[spring_id] - self.get_spring_lens[spring_id]
+        )
         spring_force = -1 * self.spring_constants[spring_id] * spring_len_diff
         return spring_force
 
@@ -113,10 +133,16 @@ class OscillatorsSimulation:
 
     def calc_next_state(self):
         oscillators_a = np.array(
-            [self.get_oscillator_force(oscillator_id) / oscillator_mass for oscillator_id, oscillator_mass in
-             enumerate(self.oscillator_masses)], float)
+            [
+                self.get_oscillator_force(oscillator_id) / oscillator_mass
+                for oscillator_id, oscillator_mass in enumerate(self.oscillator_masses)
+            ],
+            float,
+        )
         self.current_state.oscillators_v += oscillators_a * self.time_step
-        self.current_state.oscillators_x += self.current_state.oscillators_v * self.time_step
+        self.current_state.oscillators_x += (
+            self.current_state.oscillators_v * self.time_step
+        )
 
         return self.current_state
 
@@ -155,15 +181,22 @@ class OscillatorsSimulation:
             self.ax.clear()
             self.ax.set_ylim(-1, 1)
             self.ax.set_xlim(0, 10)
-            self.ax.scatter(xs, np.zeros_like(xs), c='b')
+            self.ax.scatter(xs, np.zeros_like(xs), c="b")
             self.ax.plot([0, xs[0]], [0, 0], c=self.get_color(fs[0], fmax, fmin))
-            self.ax.plot([xs[-1], self.total_length], [0, 0], c=self.get_color(fs[-1], fmax, fmin))
+            self.ax.plot(
+                [xs[-1], self.total_length],
+                [0, 0],
+                c=self.get_color(fs[-1], fmax, fmin),
+            )
 
             for spring_id, spring_len in enumerate(springs_lens[1:-1], 1):
                 prev_oscillator_id = self.get_prev_oscillator_id(spring_id)
                 prev_oscillator_x = xs[prev_oscillator_id]
-                self.ax.plot([prev_oscillator_x, prev_oscillator_x + spring_len], [0, 0],
-                             c=self.get_color(fs[spring_id], fmax, fmin))
+                self.ax.plot(
+                    [prev_oscillator_x, prev_oscillator_x + spring_len],
+                    [0, 0],
+                    c=self.get_color(fs[spring_id], fmax, fmin),
+                )
 
             return self.current_state
 
@@ -173,5 +206,5 @@ class OscillatorsSimulation:
         # plt.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
