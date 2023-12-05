@@ -6,6 +6,8 @@ import numpy as np
 from flask import Flask, render_template, Response
 from matplotlib.animation import FuncAnimation
 
+from typing import Optional
+
 app = Flask(__name__)
 
 
@@ -34,27 +36,21 @@ class OscillatorsSimulation:
 
     def __init__(
         self,
-        oscillator_masses,
-        springs_default_lens,
-        springs_current_lens=None,
-        spring_constants=None,
-        elastic_collisions=False,
-        damping=0,
+        oscillator_masses: list[int],
+        springs_current_lens: Optional[list[int]] = None,
+        spring_constants: Optional[list[int]] = None,
+        elastic_collisions: bool = False,
+        damping: float = 0.0,
     ):
         assert damping >= 0, "Can't get negative damping"
 
-        self.num_springs = len(springs_default_lens)
         self.num_oscillators = len(oscillator_masses)
+        self.num_springs = self.num_oscillators + 1
 
-        # TODO: extend support - if added no need for equilibrium springs lens
         if spring_constants is None:
             spring_constants = [
                 self.SPRING_BASE_K,
             ] * self.num_springs
-        if len(set(spring_constants)) != 1:
-            raise NotImplementedError(
-                "When calculating equilibrium point from ks is added, different values of springs ks will be allowed"
-            )
 
         if springs_current_lens is None:
             springs_current_lens = [
@@ -63,6 +59,12 @@ class OscillatorsSimulation:
         elif len(springs_current_lens) != self.num_springs:
             raise ValueError(
                 f"Different numbers of string constants and strings lens. Constants: {self.num_springs}. Lens: {len(springs_current_lens)}"
+            )
+        elif sum(springs_current_lens) != self.SPRING_BASE_LEN * self.num_springs:
+            raise ValueError(
+                "Springs lengths should sum up to the width between the walls."
+                f"Sum of provided lengths: {sum(springs_current_lens)}."
+                f"Expected sum: {self.SPRING_BASE_LEN*self.num_springs}"
             )
 
         self.total_length = sum(springs_current_lens)
@@ -74,7 +76,6 @@ class OscillatorsSimulation:
 
         self.oscillator_masses = np.array(oscillator_masses, float)
         self.spring_constants = np.array(spring_constants, float)
-        self.spring_default_lens = np.array(springs_default_lens, float)
 
         self.fig, self.ax = plt.subplots()
 
@@ -86,7 +87,7 @@ class OscillatorsSimulation:
         v = np.zeros(self.num_oscillators)  # Velocities
 
         self.current_state = self.OscillatorsState(
-            x, v, np.zeros(self.spring_default_lens.shape, float)
+            x, v, np.zeros(self.num_springs, float)
         )
         self.break_states_generator = False
 
