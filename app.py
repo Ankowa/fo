@@ -183,13 +183,27 @@ class OscillatorsSimulation:
         assert not np.array_equal(groups, [[]]), "No collisions found"
         return groups
 
-    def not_elastic_collisions(self, indices: np.ndarray) -> None:
+    def not_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
-        Resets velocities of all elements of collisions to 0
+        Calculates velocities of all masses being part of all collisions
+        Math: (for each collision): calculate total momentum, then calculate the velocity
+        of the "new" mass consisting of all the masses and substitute.
+        Also substitute the positions of all the masses to one position (in order to
+        avoid mess like mass on the 4th place becoming mass on the 5th place and vice
+        versa if such collision occurrs)
         """
-        self.current_state.oscillators_v[indices] = 0
+        for collision in collisions:
+            momentum = np.sum(
+                self.oscillator_masses[collision]
+                * self.current_state.oscillators_v[collision]
+            )  # momentum
+            v = momentum / np.sum(self.oscillator_masses[collision])  # group velocity
+            self.current_state.oscillators_v[collision] = v
+            self.current_state.oscillators_x[collision] = np.mean(
+                self.current_state.oscillators_x[collision]
+            )  # group new position
 
-    def elastic_collisions(self, indices: np.ndarray) -> None:
+    def elastic_collisions(self, collisions: list[np.ndarray]) -> None:
         """
         TODO here math for that
         """
@@ -212,15 +226,15 @@ class OscillatorsSimulation:
         if ~np.all(
             tmp_x[:-1] < tmp_x[1:]
         ):  # masses' x coordinates are not sorted → collisions
-            col_indices = self.get_indices_of_collisions(tmp_x)
+            col_groups = self.get_indices_of_collisions(tmp_x)
             if self.elastic_collisions:
-                self.elastic_collisions(col_indices)
+                self.elastic_collisions(col_groups)
             else:
-                self.not_elastic_collisions(col_indices)
-
-        self.current_state.oscillators_x += (
-            self.current_state.oscillators_v * self.time_step
-        )
+                self.not_elastic_collisions(col_groups)
+        else:
+            self.current_state.oscillators_x += (
+                self.current_state.oscillators_v * self.time_step
+            )
 
         return self.current_state
 
