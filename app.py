@@ -179,6 +179,7 @@ class OscillatorsSimulation:
         groups = np.split(
             indices, np.arange(1, len(indices))[left_max[:-1] < right_min[1:]]
         )
+        # should not happen
         assert not np.array_equal(groups, [[]]), "No collisions found"
         return groups
 
