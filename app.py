@@ -176,9 +176,11 @@ class OscillatorsSimulation:
         left_max = np.maximum.accumulate(x[indices])
         right_min = np.minimum.accumulate(x[indices][::-1])[::-1]
 
-        return np.split(
+        groups = np.split(
             indices, np.arange(1, len(indices))[left_max[:-1] < right_min[1:]]
         )
+        assert not np.array_equal(groups, [[]]), "No collisions found"
+        return groups
 
     def not_elastic_collisions(self, indices: np.ndarray) -> None:
         """

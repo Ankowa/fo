@@ -30,7 +30,6 @@ def sim():
             [np.array([0, 1]), np.array([2, 3]), np.array([4, 5])],
         ),
         (np.array([1, 3, 2, 4]), [np.array([1, 2])]),
-        (np.arange(4), []),
         (
             np.array([1, 1, 2, 2, 3, 4, 4, 7, 5, 5, 8, 10, 10, 9]),
             [
@@ -57,3 +56,8 @@ def sim():
 def test_get_indices_of_collisions(sim, arr, out):
     for i in range(len(out)):
         assert np.array_equal(sim.get_indices_of_collisions(arr)[i], out[i])
+
+
+def test_fail_get_indices_of_collisions(sim):
+    with pytest.raises(AssertionError):
+        sim.get_indices_of_collisions(np.array([1, 2, 3]))
