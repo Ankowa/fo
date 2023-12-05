@@ -140,31 +140,45 @@ class OscillatorsSimulation:
         return oscillator_force
 
     @staticmethod
-    def get_indices_of_collisions(x: np.ndarray) -> np.ndarray:
+    def get_indices_of_collisions(x: np.ndarray) -> list[np.ndarray]:
         """
         Calculates indices of collisions. Math:
         1.  calculates max from the left, min from the right for each element
             x = [1 2 5 3 4 2 8], lmax = [1 2 5 5 5 5 8], rmin = [1 2 2 2 2 2 8]
-            expr = [T T F F F F T]
+            mask = [T T F F F F T]
         2.  catches all instances of masses being in the same spot as other masses
             e.g. x = [1 2 5 3 4 2 8] → uni, cts = [1 2 3 4 5 8], [1 2 1 1 1 1]
-            expr → [T F T T T F T]
+            mask = [T F T T T F T]
         3.  combine with above: [T F F F F F T]
             where F = collision
+            indices = [1, 2, 3, 4, 5]
+        4.  Now group the collisions in group of collisions
+            e.g x = [0, 0, 1, 2, 2, 3, 3] → 3 collisions, [0, 0], [2, 2] and [3, 3],
+            indices = [0, 1, 3, 4, 5, 6]. For that we use the 1. step once again,
+            but on the x[indices] and then split when lmax < rmin
+            we get [0, 0], [2, 2], [3, 3]
+        Returns list of np.ndarrays, each array representing indices
         """
-        indices = np.ones_like(x, dtype=bool)
+        mask = np.ones_like(x, dtype=bool)
 
         # 1
         left_max = np.maximum.accumulate(x)
         right_min = np.minimum.accumulate(x[::-1])[::-1]
 
-        indices = indices & ((x >= left_max) & (x <= right_min))
+        mask = mask & ((x >= left_max) & (x <= right_min))
 
         # 2 & 3
         uni, cnts = np.unique(x, return_counts=True)
-        indices = indices & np.isin(x, uni[cnts == 1])
+        mask = mask & np.isin(x, uni[cnts == 1])
+        indices = np.arange(len(x))[~mask]
 
-        return np.arange(len(x))[~indices]
+        # 4
+        left_max = np.maximum.accumulate(x[indices])
+        right_min = np.minimum.accumulate(x[indices][::-1])[::-1]
+
+        return np.split(
+            indices, np.arange(1, len(indices))[left_max[:-1] < right_min[1:]]
+        )
 
     def not_elastic_collisions(self, indices: np.ndarray) -> None:
         """
