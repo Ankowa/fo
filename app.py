@@ -1,178 +1,73 @@
-from dataclasses import dataclass
-from functools import cached_property
-
+from flask import Flask, render_template
+import random
 import matplotlib.pyplot as plt
-import numpy as np
-from flask import Flask, render_template, Response
 from matplotlib.animation import FuncAnimation
+from io import BytesIO
+import base64
+
+from simulation import OscillatorsSimulation
 
 app = Flask(__name__)
 
+# Mockup data for demonstration
+def generate_plot():
+    x = list(range(100))
+    
+    # Generate three sets of mock data
+    y1 = [random.uniform(-1, 1) for _ in x]
+    y2 = [random.uniform(-1, 1) for _ in x]
+    y3 = [random.uniform(-1, 1) for _ in x]
 
+    plt.plot(x, y1, label='Function 1')
+    plt.plot(x, y2, label='Function 2')
+    plt.plot(x, y3, label='Function 3')
+    
+    plt.title("Mockup Data")
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.legend()
+
+    # Save plot to a BytesIO object
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+
+    # Encode the image to base64 for embedding in HTML
+    return base64.b64encode(img.getvalue()).decode('utf-8')
+
+
+# Flask route
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Mockup data for the template
+    number_of_oscillators = 3
+    masses = [1.0, 1.5, 2.0]
+    damping_coefficient = 0.5
+    elastic_collisions = True
+    positions = [0.0, 0.5, 1.0]
 
+    # Generate mockup plots
+    oscillator_phases_plot = generate_plot()
+    forces_plot = generate_plot()
+    velocities_plot = generate_plot()
+    positions_plot = generate_plot()
 
-@app.route('/animation')
-def animation():
-    os = OscillatorsSimulation([2, 2], [2, 2, 2], [1, 4, 1])
-    ani = os.create_animation()
-    return Response(ani.to_jshtml(), content_type='text/html')
+    # Create Matplotlib Animation
+    simulation = OscillatorsSimulation([2,2])
+    ani = simulation.create_animation(10)
 
-
-class OscillatorsSimulation:
-    SPRING_BASE_LEN = 20
-    SPRING_BASE_K = 1
-    LEFT_WALL_X_CORD = 0
-
-    @dataclass
-    class OscillatorsState:
-        oscillators_x: np.ndarray
-        oscillators_v: np.ndarray
-        springs_f: np.ndarray
-
-    def __init__(self, oscillator_masses, springs_default_lens, springs_current_lens=None, spring_constants=None):
-
-        self.num_springs = len(springs_default_lens)
-        self.num_oscillators = len(oscillator_masses)
-
-        # TODO: extend support - if added no need for equilibrium springs lens
-        if spring_constants is None:
-            spring_constants = [self.SPRING_BASE_K, ] * self.num_springs
-        if len(set(spring_constants)) != 1:
-            raise NotImplementedError(
-                "When calculating equilibrium point from ks is added, different values of springs ks will be allowed")
-
-        if springs_current_lens is None:
-            springs_current_lens = [self.SPRING_BASE_LEN, ] * self.num_springs
-        elif len(springs_current_lens) != self.num_springs:
-            raise ValueError(
-                f"Different numbers of string constants and strings lens. Constants: {self.num_springs}. Lens: {len(springs_current_lens)}")
-
-        self.total_length = sum(springs_current_lens)
-
-        if self.num_springs != self.num_oscillators + 1:
-            raise ValueError(
-                f"Invalid number of springs or oscillators. Springs number: {self.num_springs}. Oscillators number: {self.num_oscillators}")
-
-        self.oscillator_masses = np.array(oscillator_masses, float)
-        self.spring_constants = np.array(spring_constants, float)
-        self.spring_default_lens = np.array(springs_default_lens, float)
-
-        self.fig, self.ax = plt.subplots()
-
-        # Parameters
-        self.time_step = 0.005  # Time step
-
-        # Initial conditions
-        x = np.cumsum(springs_current_lens[:-1], dtype=float)  # X Coordinates
-        v = np.zeros(self.num_oscillators)  # Velocities
-
-        self.current_state = self.OscillatorsState(x, v, np.zeros(self.spring_default_lens.shape, float))
-        self.break_states_generator = False
-
-    @cached_property
-    def get_spring_lens(self):
-        return (np.concatenate(
-            [self.current_state.oscillators_x, np.array([self.total_length], float)]) - np.concatenate(
-            [np.array([OscillatorsSimulation.LEFT_WALL_X_CORD], float), self.current_state.oscillators_x])
-        )
-
-    @staticmethod
-    def get_neighbor_springs_ids(oscillator_id):
-        return oscillator_id, oscillator_id + 1
-
-    @staticmethod
-    def get_prev_oscillator_id(spring_id):
-        return spring_id - 1 if spring_id else None
-
-    @staticmethod
-    def get_color(f, fmax, fmin):
-        if f > 0:
-            return (1 - f / fmax, 1 - 0.5 * (f / fmax), 0)
-        else:
-            return (1, 1 - f / fmin, 0)
-
-    def get_spring_force(self, spring_id):
-        # Force is negative if spring is currently shorter than by default -> It requires to ALWAYS suppose (when designing forces equations), that forces vectors are directed as if springs were stretched out
-        spring_len_diff = self.spring_default_lens[spring_id] - self.get_spring_lens[spring_id]
-        spring_force = -1 * self.spring_constants[spring_id] * spring_len_diff
-        return spring_force
-
-    def get_oscillator_force(self, oscillator_id):
-        left_spring_id, right_spring_id = self.get_neighbor_springs_ids(oscillator_id)
-        left_spring_force = self.get_spring_force(left_spring_id)
-        right_spring_force = self.get_spring_force(right_spring_id)
-        # Only necessary for the first spring of all - could be improved
-        self.current_state.springs_f[left_spring_id] = left_spring_force
-        self.current_state.springs_f[right_spring_id] = right_spring_force
-        # Supposition: X axis starts at the left wall and is positive on the right side from it
-        oscillator_force = right_spring_force - left_spring_force
-        return oscillator_force
-
-    def calc_next_state(self):
-        oscillators_a = np.array(
-            [self.get_oscillator_force(oscillator_id) / oscillator_mass for oscillator_id, oscillator_mass in
-             enumerate(self.oscillator_masses)], float)
-        self.current_state.oscillators_v += oscillators_a * self.time_step
-        self.current_state.oscillators_x += self.current_state.oscillators_v * self.time_step
-
-        return self.current_state
-
-    def gen_states(self, states_number):
-        for state_nr in range(states_number):
-            yield self.calc_next_state()
-
-    def gen_infinite_states(self):
-        while True:
-            if self.break_states_generator:
-                break
-            yield self.calc_next_state()
-
-    def create_animation(self, states_number=100):
-        states_gen = self.gen_states(states_number)
-        fs_gen = map(lambda state: state.springs_f, states_gen)
-        fmax = max(np.max(f) for f in fs_gen)
-
-        states_gen = self.gen_states(states_number)
-        fs_gen = map(lambda state: state.springs_f, states_gen)
-        fmin = max(np.min(f) for f in fs_gen)
-
-        states_gen = self.gen_states(states_number)
-
-        # TODO: theoretical limits
-        # fmax_squash = max(s_len * s_k for s_len, s_k in zip(self.spring_default_lens, self.spring_constants))
-        # fmax_stretch = max(self.total_length * s_k for s_k in self.spring_constants)
-        # fmax = max((fmax_stretch, fmax_squash))
-        # fmin = 0
-
-        def animate(state):
-            xs = state.oscillators_x
-            fs = state.springs_f
-            # TODO: update długosci sprezyny
-            springs_lens = self.get_spring_lens
-
-            self.ax.clear()
-            self.ax.set_ylim(-1, 1)
-            self.ax.set_xlim(0, 10)
-            self.ax.scatter(xs, np.zeros_like(xs), c='b')
-            self.ax.plot([0, xs[0]], [0, 0], c=self.get_color(fs[0], fmax, fmin))
-            self.ax.plot([xs[-1], self.total_length], [0, 0], c=self.get_color(fs[-1], fmax, fmin))
-
-            for spring_id, spring_len in enumerate(springs_lens[1:-1], 1):
-                prev_oscillator_id = self.get_prev_oscillator_id(spring_id)
-                prev_oscillator_x = xs[prev_oscillator_id]
-                self.ax.plot([prev_oscillator_x, prev_oscillator_x + spring_len], [0, 0],
-                             c=self.get_color(fs[spring_id], fmax, fmin))
-
-            return self.current_state
-
-        ani = FuncAnimation(self.fig, animate, frames=states_gen)
-        return ani
-        # ani.save('notebooks/plots/01-general-spring.gif', writer='pillow')
-        # plt.close()
-
+    return render_template('index.html', 
+                           number_of_oscillators=number_of_oscillators,
+                           masses=masses,
+                           damping_coefficient=damping_coefficient,
+                           elastic_collisions=elastic_collisions,
+                           positions=positions,
+                           oscillator_phases_plot=oscillator_phases_plot,
+                           forces_plot=forces_plot,
+                           velocities_plot=velocities_plot,
+                           positions_plot=positions_plot,
+                           animation=ani.to_jshtml())
 
 if __name__ == '__main__':
     app.run(debug=True)
