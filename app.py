@@ -54,7 +54,7 @@ def index():
     positions_plot = generate_plot()
 
     # Create Matplotlib Animation
-    simulation = OscillatorsSimulation([2,2])
+    simulation = OscillatorsSimulation([2,2], [10, 40, 10])
     ani = simulation.create_animation(10)
 
     return render_template('index.html', 

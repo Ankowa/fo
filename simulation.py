@@ -28,6 +28,7 @@ class OscillatorsSimulation:
     ):
         self.num_oscillators = len(oscillator_masses)
         self.num_springs = self.num_oscillators + 1
+        self.spring_default_lens = [OscillatorsSimulation.SPRING_BASE_LEN,] * self.num_springs
 
         if spring_constants is None:
             spring_constants = [
@@ -49,6 +50,7 @@ class OscillatorsSimulation:
                 f"Expected sum: {self.SPRING_BASE_LEN*self.num_springs}"
             )
 
+        # TODO: probably can be deleted - since we supposed total length is constant
         self.total_length = sum(springs_current_lens)
 
         if self.num_springs != self.num_oscillators + 1:
