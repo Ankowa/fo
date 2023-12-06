@@ -150,6 +150,7 @@ class OscillatorsSimulation:
         def animate(state):
             xs = state.oscillators_x
             fs = state.springs_f
+            # TODO: update długosci sprezyny
             springs_lens = self.get_spring_lens
 
             self.ax.clear()
