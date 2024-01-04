@@ -5,6 +5,7 @@ from functools import cached_property
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
+from copy import deepcopy
 
 
 class OscillatorsSimulation:
@@ -75,18 +76,19 @@ class OscillatorsSimulation:
         )
         self.break_states_generator = False
 
-        self.elastic_collisions = elastic_collisions
+        self.elastic_collisions = False
         assert damping >= 0, "Can't get negative damping"
         self.damping = damping
 
-    @cached_property
-    def get_spring_lens(self):
+    def get_spring_lens(self, state: OscillatorsState = None):
+        if state is None:
+            state = self.current_state
         return np.concatenate(
-            [self.current_state.oscillators_x, np.array([self.total_length], float)]
+            [state.oscillators_x, np.array([self.total_length], float)]
         ) - np.concatenate(
             [
                 np.array([OscillatorsSimulation.LEFT_WALL_X_CORD], float),
-                self.current_state.oscillators_x,
+                state.oscillators_x,
             ]
         )
 
@@ -110,7 +112,7 @@ class OscillatorsSimulation:
         # It requires to ALWAYS suppose (when designing forces equations),
         # that forces vectors are directed as if springs were stretched out
         spring_len_diff = (
-            self.spring_default_lens[spring_id] - self.get_spring_lens[spring_id]
+            self.spring_default_lens[spring_id] - self.get_spring_lens()[spring_id]
         )
         spring_force = -1 * self.spring_constants[spring_id] * spring_len_diff
         return spring_force
@@ -269,14 +271,19 @@ class OscillatorsSimulation:
 
     def create_animation(self, states_number=100):
         states_gen = self.gen_states(states_number)
-        fs_gen = map(lambda state: state.springs_f, states_gen)
-        fmax = max(np.max(f) for f in fs_gen)
 
-        states_gen = self.gen_states(states_number)
-        fs_gen = map(lambda state: state.springs_f, states_gen)
-        fmin = max(np.min(f) for f in fs_gen)
+        states = []
+        while True:
+            try:
+                new_state = deepcopy(next(states_gen))
+            except StopIteration:
+                break
+            states.append(new_state)
 
-        states_gen = self.gen_states(states_number)
+        all_xs = np.array([state.oscillators_x for state in states])
+        all_fs = np.array([state.springs_f for state in states])
+        fmax = np.max(all_fs)
+        fmin = np.min(all_fs)
 
         # TODO: theoretical limits
         # fmax_squash = max(s_len * s_k for s_len, s_k in zip(self.spring_default_lens, self.spring_constants))
@@ -284,15 +291,14 @@ class OscillatorsSimulation:
         # fmax = max((fmax_stretch, fmax_squash))
         # fmin = 0
 
-        def animate(state):
-            xs = state.oscillators_x
-            fs = state.springs_f
-            springs_lens = self.get_spring_lens
+        def animate(i):
+            xs = all_xs[i]
+            fs = all_fs[i]
+            springs_lens = self.get_spring_lens(states[i])
 
             self.ax.clear()
             self.ax.set_ylim(-1, 1)
-            self.ax.set_xlim(0, 10)
-            self.ax.scatter(xs, np.zeros_like(xs), c="b")
+            self.ax.set_xlim(0, self.total_length)
             self.ax.plot([0, xs[0]], [0, 0], c=self.get_color(fs[0], fmax, fmin))
             self.ax.plot(
                 [xs[-1], self.total_length],
@@ -309,7 +315,16 @@ class OscillatorsSimulation:
                     c=self.get_color(fs[spring_id], fmax, fmin),
                 )
 
-            return self.current_state
+            self.ax.scatter(xs, np.zeros_like(xs), c="b")
+            for x, num in zip(xs, np.arange(self.num_oscillators)):
+                self.ax.annotate(
+                    f"{num}",
+                    (x, 0),
+                    xytext=(0, 0),
+                    textcoords="offset points",
+                    ha="center",
+                )
 
-        ani = FuncAnimation(self.fig, animate, frames=states_gen)
+        ani = FuncAnimation(self.fig, animate, frames=range(0, states_number, 100))
+        ani.save("animation.gif", writer="imagemagick")
         return ani
