@@ -55,7 +55,7 @@ def index():
 
     # Create Matplotlib Animation
     simulation = OscillatorsSimulation([2,2], [10, 40, 10])
-    ani = simulation.create_animation(10)
+    ani = simulation.create_animation(1000)
 
     return render_template('index.html', 
                            number_of_oscillators=number_of_oscillators,
