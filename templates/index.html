@@ -5,186 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coupled Oscillators Synchronization</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
-<body class="container">
-    <div class="card my-5" style="width: 95%;">
-        <div class="card-body">
-
-            <div class="row">
+<body>
+    <div class="container-fluid"> <!-- Use container-fluid for full width -->
+        <div class="card my-5">
+            <div class="card-body row">
+                <!-- Left side: form and animation -->
                 <div class="col-md-6">
                     <h1>Coupled Oscillators Synchronization</h1>
-
-                    <form>
-                        <label for="number_of_oscillators">Number of Oscillators:</label>
-                        <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50">
-
-                        <div id="oscillatorInputs">
-                            <!-- Oscillator inputs will be dynamically added here -->
+                    <form method="post">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="number_of_oscillators">Number of Oscillators:</label>
+                                <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50" onchange="generateInputs()">
+                                <div id="oscillatorInputs"></div>
+                            </div>
+                            <div class="col-md-8">
+                                <div id="springInputs"></div>
+                            </div>
                         </div>
-
-                        <label for="elastic_collisions">Elastic Collisions:</label>
-                        <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
-
+                        <div class="mb-3">
+                            <label for="damping">Damping Coefficient:</label>
+                            <input type="number" id="damping" name="damping" value="{{ damping_coefficient }}" step="0.00001" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="time_step">Time step:</label>
+                            <input type="number" id="time_step" name="time_step" value="{{ time_step }}" step="0.0001" data-default="0.005" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="n_states">Number of states:</label>
+                            <input type="number" id="n_states" name="n_states" value="{{ n_states }}" step="1" data-default="10000" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="elastic_collisions">Elastic Collisions:</label>
+                            <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+                        </div>
                         <button type="submit" class="btn btn-primary">Start</button>
-                        <button type="button" class="btn btn-secondary">Stop</button>
-                        <button type="button" class="btn btn-danger">Reset</button>
+                        <button type="reset" class="btn btn-danger">Reset</button>
                     </form>
-
                     <div style="padding-top: 4rem;">
                         <h2>Simulation</h2>
                         {{ animation|safe }}
                     </div>
                 </div>
-
-                <div class="col-md-6" style="height: 70rem; padding-left: 3rem; overflow-y: auto;">
-                    <div id="plots-container">
-                        <div class="plot-container">
-                            <h2>Oscillator Phases</h2>
-                            <img src="data:image/png;base64,{{ oscillator_phases_plot }}" alt="Oscillator Phases" class="img-fluid">
-                        </div>
-
-                        <div class="plot-container">
-                            <h2>Forces Acting on Each Oscillator</h2>
-                            <img src="data:image/png;base64,{{ forces_plot }}" alt="Forces Acting on Each Oscillator" class="img-fluid">
-                        </div>
-
-                        <div class="plot-container">
-                            <h2>Velocities</h2>
-                            <img src="data:image/png;base64,{{ velocities_plot }}" alt="Velocities" class="img-fluid">
-                        </div>
-
-                        <div class="plot-container">
-                            <h2>Positions</h2>
-                            <img src="data:image/png;base64,{{ positions_plot }}" alt="Positions" class="img-fluid">
-                        </div>
+                <!-- Right side: plots -->
+                <div class="col-md-6">
+                    <div class="plots-container">
+                        <img src="data:image/png;base64,{{ plots }}" alt="Plot">
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <style>
-        .oscillator-input {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .oscillator-input div {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .oscillator-input label {
-            margin-bottom: 5px;
-        }
-
-        .position-slider {
-            margin-top: 0;
-        }
-
-        .img-fluid {
-            width: 100%;
-            height: auto;
-        }
-
-        #plots-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .plot-container {
-            width: 100%;
-        }
-    </style>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Initial input generation when the page loads
-            generateOscillatorInputs();
 
-            document.getElementById('number_of_oscillators').addEventListener('change', function () {
-                // Call the input generation logic when the number of oscillators changes
-                generateOscillatorInputs();
-            });
+        var default_masses = {{ masses | tojson }};
+        var default_spring_constants = {{ spring_constants | tojson }};
+        var default_spring_lengths = {{ spring_lengths | tojson }};
+        
+        function generateInputs() {
+            const numberOfOscillators = document.getElementById('number_of_oscillators').value;
+            const oscillatorInputsDiv = document.getElementById('oscillatorInputs');
+            const springInputsDiv = document.getElementById('springInputs');
+            oscillatorInputsDiv.innerHTML = '';
+            springInputsDiv.innerHTML = '';
 
-            function generateOscillatorInputs() {
-                const numberOfOscillators = document.getElementById('number_of_oscillators').value;
-                const oscillatorInputsDiv = document.getElementById('oscillatorInputs');
-
-                // Clear existing inputs
-                oscillatorInputsDiv.innerHTML = '';
-
-                // Generate new inputs based on the selected number of oscillators
-                for (let i = 0; i < numberOfOscillators; i++) {
-                    // Oscillator Input Row
-                    const oscillatorInputDiv = document.createElement('div');
-                    oscillatorInputDiv.className = 'oscillator-input';
-
-                    // Mass Input
-                    const massLabel = document.createElement('label');
-                    massLabel.innerText = `Mass ${i + 1}:`;
-                    const massInput = document.createElement('input');
-                    massInput.type = 'number';
-                    massInput.name = `mass_${i + 1}`;
-                    massInput.placeholder = `Mass ${i + 1}`;
-
-                    const massDiv = document.createElement('div');
-                    massDiv.appendChild(massLabel);
-                    massDiv.appendChild(massInput);
-
-                    // Damping Coefficient Input
-                    const dampingLabel = document.createElement('label');
-                    dampingLabel.innerText = `Damping Coefficient ${i + 1}:`;
-                    const dampingInput = document.createElement('input');
-                    dampingInput.type = 'text';
-                    dampingInput.name = `damping_${i + 1}`;
-                    dampingInput.placeholder = `Damping Coefficient ${i + 1}`;
-                    dampingInput.pattern = "[0-9]+(\.[0-9]+)?";
-
-                    const dampingDiv = document.createElement('div');
-                    dampingDiv.appendChild(dampingLabel);
-                    dampingDiv.appendChild(dampingInput);
-
-                    // Position Slider and Label
-                    const positionSliderDiv = document.createElement('div');
-                    positionSliderDiv.className = 'position-slider';
-
-                    const positionLabel = document.createElement('label');
-                    positionLabel.innerText = `Oscillator ${i + 1} position:`;
-
-                    const positionSliderValue = document.createElement('span');
-                    positionSliderValue.className = 'slider-value';
-                    positionSliderValue.innerText = '0.5'; // Default value
-
-                    const positionSlider = document.createElement('input');
-                    positionSlider.type = 'range';
-                    positionSlider.min = '0';
-                    positionSlider.max = '500';
-                    positionSlider.step = '0.01';
-                    positionSlider.name = `position_${i + 1}`;
-                    positionSlider.value = '0.5';
-
-                    positionSlider.addEventListener('input', function () {
-                        positionSliderValue.innerText = this.value;
-                    });
-
-                    positionSliderDiv.appendChild(positionLabel);
-                    positionSliderDiv.appendChild(positionSlider);
-                    positionSliderDiv.appendChild(positionSliderValue);
-
-                    oscillatorInputDiv.appendChild(massDiv);
-                    oscillatorInputDiv.appendChild(dampingDiv);
-                    oscillatorInputDiv.appendChild(positionSliderDiv);
-
-                    oscillatorInputsDiv.appendChild(oscillatorInputDiv);
-                }
+            for (let i = 0; i < numberOfOscillators; i++) {
+                oscillatorInputsDiv.innerHTML += `
+                    <div class="form-group">
+                        <label>Mass ${i + 1}:</label>
+                        <input type="number" name="mass_${i + 1}" value="${default_masses[i] || 1}" required>
+                    </div>
+                `;
+                springInputsDiv.innerHTML += `
+                    <div class="form-group">
+                        <label>Spring ${i + 1} Constant:</label>
+                        <input type="number" name="spring_constant_${i + 1}" value="${default_spring_constants[i]}" required>
+                        <label>Spring ${i + 1} Length:</label>
+                        <input type="number" name="spring_length_${i + 1}" value="${default_spring_lengths[i]}" required>
+                    </div>
+                `;
             }
-        });
+            // Additional row for spring
+            springInputsDiv.innerHTML += `
+                <div class="form-group">
+                    <label>Spring ${parseInt(numberOfOscillators) + 1} Constant:</label>
+                    <input type="number" name="spring_constant_${parseInt(numberOfOscillators) + 1}" value="${default_spring_constants[numberOfOscillators] || 1.0}" required>
+                    <label>Spring ${parseInt(numberOfOscillators) + 1} Length:</label>
+                    <input type="number" name="spring_length_${parseInt(numberOfOscillators) + 1}" value="${default_spring_lengths[numberOfOscillators] || 20.0}" required>
+                </div>
+            `;
+        }
+
+        // Initialize input fields on page load
+        window.onload = function() {
+            generateInputs();
+        };
     </script>
+
+    <style>
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .plots-container img {
+            width: auto;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .container-fluid {
+            max-width: 80%; /* Adjust this value as needed */
+        }
+ 
+        @media screen and (max-width: 1200px) {
+            .container-fluid {
+                max-width: 90%; /* Adjust this value as needed */
+            }
+            }
+    </style>
 </body>
 </html>

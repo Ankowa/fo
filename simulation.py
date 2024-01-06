@@ -29,10 +29,13 @@ class OscillatorsSimulation:
         spring_constants: Optional[list[int]] = None,
         elastic_collisions: bool = False,
         damping: float = 0.0,
+        time_step: float = 0.005
     ):
         self.num_oscillators = len(oscillator_masses)
         self.num_springs = self.num_oscillators + 1
-        self.spring_default_lens = [OscillatorsSimulation.SPRING_BASE_LEN,] * self.num_springs
+        self.spring_default_lens = [
+            OscillatorsSimulation.SPRING_BASE_LEN,
+        ] * self.num_springs
 
         if spring_constants is None:
             spring_constants = [
@@ -64,16 +67,27 @@ class OscillatorsSimulation:
 
         self.oscillator_masses = np.array(oscillator_masses, float)
         self.spring_constants = np.array(spring_constants, float)
+        self.times = []
+        self.positions = [[] for _ in range(self.num_oscillators)]
+        self.velocities = [[] for _ in range(self.num_oscillators)]
+        self.forces = [
+            [] for _ in range(self.num_springs)
+        ]  # Assuming you want to plot forces for each spring
+        self.phases = [[] for _ in range(self.num_oscillators)]
 
         # Create a separate figure for the main animation
         self.animation_fig, self.ax = plt.subplots(figsize=(10, 5))
 
         # Create another figure for the additional plots
-        self.plots_fig, (self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax) = plt.subplots(4, 1, figsize=(10, 20))
-
+        self.plots_fig, (
+            self.phase_ax,
+            self.force_ax,
+            self.velocity_ax,
+            self.position_ax,
+        ) = plt.subplots(4, 1, figsize=(10, 20))
 
         # Parameters
-        self.time_step = 0.005  # Time step
+        self.time_step = time_step  # Time step
 
         # Initial conditions
         x = np.cumsum(springs_current_lens[:-1], dtype=float)  # X Coordinates
@@ -87,8 +101,6 @@ class OscillatorsSimulation:
         self.elastic_collisions = False
         assert damping >= 0, "Can't get negative damping"
         self.damping = damping
-    
-    
 
     def get_spring_lens(self, state: OscillatorsState = None):
         if state is None:
@@ -267,6 +279,21 @@ class OscillatorsSimulation:
                 self.current_state.oscillators_v * self.time_step
             )
 
+        # Update time and value lists
+        self.times.append(len(self.times) * self.time_step)
+        for i in range(self.num_oscillators):
+            self.positions[i].append(self.current_state.oscillators_x[i])
+            self.velocities[i].append(self.current_state.oscillators_v[i])
+            self.phases[i].append(
+                np.arctan2(
+                    self.current_state.oscillators_v[i],
+                    self.current_state.oscillators_x[i],
+                )
+            )
+
+        for i in range(self.num_springs):
+            self.forces[i].append(self.get_spring_force(i))
+
         return self.current_state
 
     def gen_states(self, states_number):
@@ -279,33 +306,68 @@ class OscillatorsSimulation:
                 break
             yield self.calc_next_state()
 
-    # def get_plots(self):
-    #     plot_images = {}
-
-    #     for plot_name, ax in zip(["phase", "force", "velocity", "position"], [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]):
-    #         img = BytesIO()
-            # ax.get_figure().savefig(img, format='png')
-    #         img.seek(0)
-    #         plot_images[plot_name] = base64.b64encode(img.getvalue()).decode('utf-8')
-        
-    #     return plot_images
-
     def get_plots(self):
+
         plot_images = {}
 
-        # Redraw and update the plots before saving
-        for ax in [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]:
-            ax.get_figure().canvas.draw()  # Force redraw of the canvas
+        # Plot for each oscillator
+        colors = [
+            "#0000FF",  # Blue
+            "#008000",  # Green
+            "#FF0000",  # Red
+            "#00FFFF",  # Cyan
+            "#FF00FF",  # Magenta
+            "#FFFF00",  # Yellow
+            "#000000",  # Black
+            "#FF5733",  # Crimson
+            "#DAF7A6",  # Light Green
+            "#900C3F",  # Dark Red
+            "#3498DB",  # Soft Blue
+            "#2ECC71",  # Soft Green
+            "#9B59B6",  # Purple
+            "#F1C40F",  # Golden
+            "#E74C3C",  # Reddish
+            "#34495E",  # Dark Blue
+            "#1ABC9C",  # Turquoise
+            "#7D3C98",  # Plum
+            "#A569BD",  # Lavender
+            "#D35400"   # Orange
+        ]
 
-        for plot_name, ax in zip(["phase", "force", "velocity", "position"], [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]):
+
+        # Update and redraw phase, force, velocity, position plots
+        for ax, data_list, title in zip(
+            [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax],
+            [self.phases, self.forces, self.velocities, self.positions],
+            ["Phases", "Forces", "Velocities", "Positions"],
+        ):
+            ax.clear()
+            if title == "Forces":
+                for i, data in enumerate(data_list):
+                    ax.plot(
+                        self.times, data, c=colors[i % len(colors)], label=f"Spring {i}"
+                    )
+            else:
+                for i, data in enumerate(data_list):
+                    ax.plot(
+                        self.times, data, c=colors[i % len(colors)], label=f"Oscillator {i}"
+                    )
+            ax.set_title(title)
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Value")
+            ax.legend(loc='upper right')
+
+        # Save plots
+        for plot_name, ax in zip(
+            ["phase", "force", "velocity", "position"],
+            [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax],
+        ):
             img = BytesIO()
-            ax.get_figure().savefig(img, format='png', bbox_inches='tight')
-            # Save with tight bounding box
+            ax.get_figure().savefig(img, format="png", bbox_inches="tight")
             img.seek(0)
-            plot_images[plot_name] = base64.b64encode(img.getvalue()).decode('utf-8')
+            plot_images[plot_name] = base64.b64encode(img.getvalue()).decode("utf-8")
 
         return plot_images
-
 
     def create_animation(self, states_number=1000):
         states_gen = self.gen_states(states_number)
@@ -329,7 +391,7 @@ class OscillatorsSimulation:
         # fmax_stretch = max(self.total_length * s_k for s_k in self.spring_constants)
         # fmax = max((fmax_stretch, fmax_squash))
         # fmin = 0
-        
+
         self.phase_data = []
         self.force_data = []
         self.velocity_data = []
@@ -375,27 +437,28 @@ class OscillatorsSimulation:
 
             # Update phase plot
             phase = np.arctan2(all_xs[i], all_vs[i])
-            
-            self.phase_ax.plot(np.arange(self.num_oscillators), phase, 'ro-')
-            self.phase_ax.set_title('Oscillator Phases')
+
+            self.phase_ax.plot(np.arange(self.num_oscillators), phase, "ro-")
+            self.phase_ax.set_title("Oscillator Phases")
 
             # Update force plot
 
-            self.force_ax.plot(np.arange(self.num_springs), all_fs[i], 'bo-')
-            self.force_ax.set_title('Forces on Oscillators')
+            self.force_ax.plot(np.arange(self.num_springs), all_fs[i], "bo-")
+            self.force_ax.set_title("Forces on Oscillators")
 
             # Update velocity plot
-            
-            self.velocity_ax.plot(np.arange(self.num_oscillators), all_vs[i], 'go-')
-            self.velocity_ax.set_title('Velocities of Oscillators')
+
+            self.velocity_ax.plot(np.arange(self.num_oscillators), all_vs[i], "go-")
+            self.velocity_ax.set_title("Velocities of Oscillators")
 
             # Update position plot
-            
-            self.position_ax.plot(np.arange(self.num_oscillators), all_xs[i], 'mo-')
-            self.position_ax.set_title('Positions of Oscillators')
 
+            self.position_ax.plot(np.arange(self.num_oscillators), all_xs[i], "mo-")
+            self.position_ax.set_title("Positions of Oscillators")
 
-        ani = FuncAnimation(self.animation_fig, animate, frames=range(0, states_number, 100))
+        ani = FuncAnimation(
+            self.animation_fig, animate, frames=range(0, states_number, 100)
+        )
         # TODO: remove saving - it will be faster
-        ani.save("animation.gif", writer="imagemagick")
+        # ani.save("animation.gif", writer="Pillow")
         return ani
