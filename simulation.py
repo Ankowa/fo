@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 from dataclasses import dataclass
 from functools import cached_property
+from io import BytesIO
+import base64
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,8 +64,9 @@ class OscillatorsSimulation:
 
         self.oscillator_masses = np.array(oscillator_masses, float)
         self.spring_constants = np.array(spring_constants, float)
-
-        self.fig, self.ax = plt.subplots()
+        
+        self.fig, axes = plt.subplots(5, 1, figsize=(10, 20))  # Adjust the layout as needed
+        self.ax, self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax = axes
 
         # Parameters
         self.time_step = 0.005  # Time step
@@ -79,6 +83,8 @@ class OscillatorsSimulation:
         self.elastic_collisions = False
         assert damping >= 0, "Can't get negative damping"
         self.damping = damping
+    
+    
 
     def get_spring_lens(self, state: OscillatorsState = None):
         if state is None:
@@ -269,7 +275,18 @@ class OscillatorsSimulation:
                 break
             yield self.calc_next_state()
 
-    def create_animation(self, states_number=100):
+    # Mockup data for demonstration
+    def get_plots(self):
+        
+        # Save plot to a BytesIO object
+        img = BytesIO()
+        self.fig.savefig(img, format='png')
+        img.seek(0)
+
+        # Encode the image to base64 for embedding in HTML
+        return base64.b64encode(img.getvalue()).decode('utf-8')
+
+    def create_animation(self, states_number=1000):
         states_gen = self.gen_states(states_number)
 
         states = []
@@ -282,6 +299,7 @@ class OscillatorsSimulation:
 
         all_xs = np.array([state.oscillators_x for state in states])
         all_fs = np.array([state.springs_f for state in states])
+        all_vs = np.array([state.oscillators_v for state in states])
         fmax = np.max(all_fs)
         fmin = np.min(all_fs)
 
@@ -290,6 +308,15 @@ class OscillatorsSimulation:
         # fmax_stretch = max(self.total_length * s_k for s_k in self.spring_constants)
         # fmax = max((fmax_stretch, fmax_squash))
         # fmin = 0
+        
+        self.phase_data = []
+        self.force_data = []
+        self.velocity_data = []
+        self.position_data = []
+        self.phase_ax.clear()
+        self.force_ax.clear()
+        self.velocity_ax.clear()
+        self.position_ax.clear()
 
         def animate(i):
             xs = all_xs[i]
@@ -325,6 +352,29 @@ class OscillatorsSimulation:
                     ha="center",
                 )
 
+            # Update phase plot
+            phase = np.arctan2(all_xs[i], all_vs[i])
+            
+            self.phase_ax.plot(np.arange(self.num_oscillators), phase, 'ro-')
+            self.phase_ax.set_title('Oscillator Phases')
+
+            # Update force plot
+
+            self.force_ax.plot(np.arange(self.num_springs), all_fs[i], 'bo-')
+            self.force_ax.set_title('Forces on Oscillators')
+
+            # Update velocity plot
+            
+            self.velocity_ax.plot(np.arange(self.num_oscillators), all_vs[i], 'go-')
+            self.velocity_ax.set_title('Velocities of Oscillators')
+
+            # Update position plot
+            
+            self.position_ax.plot(np.arange(self.num_oscillators), all_xs[i], 'mo-')
+            self.position_ax.set_title('Positions of Oscillators')
+
+
         ani = FuncAnimation(self.fig, animate, frames=range(0, states_number, 100))
+        # TODO: remove saving - it will be faster
         ani.save("animation.gif", writer="imagemagick")
         return ani
