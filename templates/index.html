@@ -12,7 +12,7 @@
             <h1>Coupled Oscillators Synchronization</h1>
             <form method="post">
                 <div class="row">
-                    <div class="col">
+                    <div class="col-md-4"> <!-- Mass inputs column (1/3 of the width) -->
                         <label for="number_of_oscillators">Number of Oscillators:</label>
                         <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50" onchange="generateInputs()">
 
@@ -20,7 +20,7 @@
                             <!-- Oscillator mass inputs will be dynamically added here -->
                         </div>
                     </div>
-                    <div class="col">
+                    <div class="col-md-8"> <!-- Spring inputs column (2/3 of the width) -->
                         <div id="springInputs">
                             <!-- Spring constant and length inputs will be dynamically added here -->
                         </div>
@@ -41,6 +41,11 @@
                 <h2>Simulation</h2>
                 {{ animation|safe }}
             </div>
+
+            <div class="plots-container">
+                <img src="data:image/png;base64,{{ plots }}" alt="Plot">
+            </div>
+
         </div>
     </div>
 
@@ -71,10 +76,10 @@
             // Additional row for spring
             springInputsDiv.innerHTML += `
                 <div class="form-group">
-                    <label>Spring ${int(numberOfOscillators) + 1} Constant:</label>
-                    <input type="number" name="spring_constant_${int(numberOfOscillators) + 1}" required>
-                    <label>Spring ${int(numberOfOscillators) + 1} Length:</label>
-                    <input type="number" name="spring_length_${int(numberOfOscillators) + 1}" required>
+                    <label>Spring ${parseInt(numberOfOscillators) + 1} Constant:</label>
+                    <input type="number" name="spring_constant_${parseInt(numberOfOscillators) + 1}" required>
+                    <label>Spring ${parseInt(numberOfOscillators) + 1} Length:</label>
+                    <input type="number" name="spring_length_${parseInt(numberOfOscillators) + 1}" required>
                 </div>
             `;
         }
@@ -86,6 +91,10 @@
     <style>
         .form-group {
             margin-bottom: 10px;
+        }
+
+        .plots-container {
+            
         }
     </style>
 </body>

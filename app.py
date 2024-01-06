@@ -32,8 +32,8 @@ def index():
             elastic_collisions=elastic_collisions,
             damping=damping_coefficient,
         )
-        ani = simulation.create_animation(2000)
-        plots = simulation.get_plots()
+        ani = simulation.create_animation(5000)
+        plots = list(simulation.get_plots().values())[0]
 
         return render_template(
             "index.html",
@@ -64,8 +64,8 @@ def index():
             damping=damping_coefficient,
         )
 
-        ani = simulation.create_animation(2000)
-        plots = simulation.get_plots()
+        ani = simulation.create_animation(5000)
+        plots = list(simulation.get_plots().values())[0]
 
         # Default values for initial GET request
 
