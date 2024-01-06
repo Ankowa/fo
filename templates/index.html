@@ -30,11 +30,11 @@
                         </div>
                         <div class="mb-3">
                             <label for="time_step">Time step:</label>
-                            <input type="number" id="time_step" name="time_step" value="{{ time_step }}" step="0.0001" required>
+                            <input type="number" id="time_step" name="time_step" value="{{ time_step }}" step="0.0001" data-default="0.005" required>
                         </div>
                         <div class="mb-3">
                             <label for="n_states">Number of states:</label>
-                            <input type="number" id="n_states" name="n_states" value="{{ n_states }}" step="1" required>
+                            <input type="number" id="n_states" name="n_states" value="{{ n_states }}" step="1" data-default="10000" required>
                         </div>
                         <div class="mb-3">
                             <label for="elastic_collisions">Elastic Collisions:</label>
@@ -59,6 +59,11 @@
     </div>
 
     <script>
+
+        var default_masses = {{ masses | tojson }};
+        var default_spring_constants = {{ spring_constants | tojson }};
+        var default_spring_lengths = {{ spring_lengths | tojson }};
+        
         function generateInputs() {
             const numberOfOscillators = document.getElementById('number_of_oscillators').value;
             const oscillatorInputsDiv = document.getElementById('oscillatorInputs');
@@ -70,15 +75,15 @@
                 oscillatorInputsDiv.innerHTML += `
                     <div class="form-group">
                         <label>Mass ${i + 1}:</label>
-                        <input type="number" name="mass_${i + 1}" required>
+                        <input type="number" name="mass_${i + 1}" value="${default_masses[i] || 1}" required>
                     </div>
                 `;
                 springInputsDiv.innerHTML += `
                     <div class="form-group">
                         <label>Spring ${i + 1} Constant:</label>
-                        <input type="number" name="spring_constant_${i + 1}" required>
+                        <input type="number" name="spring_constant_${i + 1}" value="${default_spring_constants[i]}" required>
                         <label>Spring ${i + 1} Length:</label>
-                        <input type="number" name="spring_length_${i + 1}" required>
+                        <input type="number" name="spring_length_${i + 1}" value="${default_spring_lengths[i]}" required>
                     </div>
                 `;
             }
@@ -86,15 +91,17 @@
             springInputsDiv.innerHTML += `
                 <div class="form-group">
                     <label>Spring ${parseInt(numberOfOscillators) + 1} Constant:</label>
-                    <input type="number" name="spring_constant_${parseInt(numberOfOscillators) + 1}" required>
+                    <input type="number" name="spring_constant_${parseInt(numberOfOscillators) + 1}" value="${default_spring_constants[numberOfOscillators] || 1.0}" required>
                     <label>Spring ${parseInt(numberOfOscillators) + 1} Length:</label>
-                    <input type="number" name="spring_length_${parseInt(numberOfOscillators) + 1}" required>
+                    <input type="number" name="spring_length_${parseInt(numberOfOscillators) + 1}" value="${default_spring_lengths[numberOfOscillators] || 20.0}" required>
                 </div>
             `;
         }
 
-        // Call this function to initialize the form with the correct number of input fields
-        generateInputs();
+        // Initialize input fields on page load
+        window.onload = function() {
+            generateInputs();
+        };
     </script>
 
     <style>
@@ -109,6 +116,12 @@
         .container-fluid {
             max-width: 80%; /* Adjust this value as needed */
         }
+ 
+        @media screen and (max-width: 1200px) {
+            .container-fluid {
+                max-width: 90%; /* Adjust this value as needed */
+            }
+            }
     </style>
 </body>
 </html>
