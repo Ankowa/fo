@@ -22,6 +22,8 @@ def index():
             for i in range(1, number_of_oscillators + 2)
         ]
         damping_coefficient = float(request.form.get("damping", 0.5))
+        time_step = float(request.form.get("time_step", 0.005))
+        n_states = int(request.form.get("n_states", N_STATES))
         elastic_collisions = "elastic_collisions" in request.form
 
         # Create and run simulation
@@ -31,8 +33,9 @@ def index():
             spring_constants=spring_constants,
             elastic_collisions=elastic_collisions,
             damping=damping_coefficient,
+            time_step=time_step
         )
-        ani = simulation.create_animation(N_STATES)
+        ani = simulation.create_animation(n_states)
         plots = list(simulation.get_plots().values())[0]
 
         return render_template(

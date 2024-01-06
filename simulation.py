@@ -29,6 +29,7 @@ class OscillatorsSimulation:
         spring_constants: Optional[list[int]] = None,
         elastic_collisions: bool = False,
         damping: float = 0.0,
+        time_step: float = 0.005
     ):
         self.num_oscillators = len(oscillator_masses)
         self.num_springs = self.num_oscillators + 1
@@ -86,7 +87,7 @@ class OscillatorsSimulation:
         ) = plt.subplots(4, 1, figsize=(10, 20))
 
         # Parameters
-        self.time_step = 0.0005  # Time step
+        self.time_step = time_step  # Time step
 
         # Initial conditions
         x = np.cumsum(springs_current_lens[:-1], dtype=float)  # X Coordinates
@@ -354,7 +355,7 @@ class OscillatorsSimulation:
             ax.set_title(title)
             ax.set_xlabel("Time")
             ax.set_ylabel("Value")
-            ax.legend()
+            ax.legend(loc='upper right')
 
         # Save plots
         for plot_name, ax in zip(
