@@ -6,46 +6,47 @@
     <title>Coupled Oscillators Synchronization</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body class="container">
-    <div class="card my-5">
-        <div class="card-body">
-            <h1>Coupled Oscillators Synchronization</h1>
-            <form method="post">
-                <div class="row">
-                    <div class="col-md-4"> <!-- Mass inputs column (1/3 of the width) -->
-                        <label for="number_of_oscillators">Number of Oscillators:</label>
-                        <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50" onchange="generateInputs()">
-
-                        <div id="oscillatorInputs">
-                            <!-- Oscillator mass inputs will be dynamically added here -->
+<body>
+    <div class="container-fluid"> <!-- Use container-fluid for full width -->
+        <div class="card my-5">
+            <div class="card-body row">
+                <!-- Left side: form and animation -->
+                <div class="col-md-6">
+                    <h1>Coupled Oscillators Synchronization</h1>
+                    <form method="post">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="number_of_oscillators">Number of Oscillators:</label>
+                                <input type="number" id="number_of_oscillators" name="number_of_oscillators" value="{{ number_of_oscillators }}" min="1" max="50" onchange="generateInputs()">
+                                <div id="oscillatorInputs"></div>
+                            </div>
+                            <div class="col-md-8">
+                                <div id="springInputs"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-8"> <!-- Spring inputs column (2/3 of the width) -->
-                        <div id="springInputs">
-                            <!-- Spring constant and length inputs will be dynamically added here -->
+                        <div class="mb-3">
+                            <label for="damping">Damping Coefficient:</label>
+                            <input type="number" id="damping" name="damping" value="{{ damping_coefficient }}" step="0.00001" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="elastic_collisions">Elastic Collisions:</label>
+                            <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Start</button>
+                        <button type="reset" class="btn btn-danger">Reset</button>
+                    </form>
+                    <div style="padding-top: 4rem;">
+                        <h2>Simulation</h2>
+                        {{ animation|safe }}
                     </div>
                 </div>
-
-                <label for="damping">Damping Coefficient:</label>
-                <input type="number" id="damping" name="damping" value="{{ damping_coefficient }}" step="0.01" required>
-
-                <label for="elastic_collisions">Elastic Collisions:</label>
-                <input type="checkbox" id="elastic_collisions" name="elastic_collisions" {% if elastic_collisions %}checked{% endif %}>
-
-                <button type="submit" class="btn btn-primary">Start</button>
-                <button type="reset" class="btn btn-danger">Reset</button>
-            </form>
-
-            <div style="padding-top: 4rem;">
-                <h2>Simulation</h2>
-                {{ animation|safe }}
+                <!-- Right side: plots -->
+                <div class="col-md-6">
+                    <div class="plots-container">
+                        <img src="data:image/png;base64,{{ plots }}" alt="Plot">
+                    </div>
+                </div>
             </div>
-
-            <div class="plots-container">
-                <img src="data:image/png;base64,{{ plots }}" alt="Plot">
-            </div>
-
         </div>
     </div>
 
@@ -92,9 +93,13 @@
         .form-group {
             margin-bottom: 10px;
         }
-
-        .plots-container {
-            
+        .plots-container img {
+            width: auto;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .container-fluid {
+            max-width: 80%; /* Adjust this value as needed */
         }
     </style>
 </body>

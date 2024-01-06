@@ -86,7 +86,7 @@ class OscillatorsSimulation:
         ) = plt.subplots(4, 1, figsize=(10, 20))
 
         # Parameters
-        self.time_step = 0.005  # Time step
+        self.time_step = 0.0005  # Time step
 
         # Initial conditions
         x = np.cumsum(springs_current_lens[:-1], dtype=float)  # X Coordinates
@@ -310,7 +310,29 @@ class OscillatorsSimulation:
         plot_images = {}
 
         # Plot for each oscillator
-        colors = ["b", "g", "r", "c", "m", "y", "k"]  # Extend this list as needed
+        colors = [
+            "#0000FF",  # Blue
+            "#008000",  # Green
+            "#FF0000",  # Red
+            "#00FFFF",  # Cyan
+            "#FF00FF",  # Magenta
+            "#FFFF00",  # Yellow
+            "#000000",  # Black
+            "#FF5733",  # Crimson
+            "#DAF7A6",  # Light Green
+            "#900C3F",  # Dark Red
+            "#3498DB",  # Soft Blue
+            "#2ECC71",  # Soft Green
+            "#9B59B6",  # Purple
+            "#F1C40F",  # Golden
+            "#E74C3C",  # Reddish
+            "#34495E",  # Dark Blue
+            "#1ABC9C",  # Turquoise
+            "#7D3C98",  # Plum
+            "#A569BD",  # Lavender
+            "#D35400"   # Orange
+        ]
+
 
         # Update and redraw phase, force, velocity, position plots
         for ax, data_list, title in zip(
@@ -319,10 +341,16 @@ class OscillatorsSimulation:
             ["Phases", "Forces", "Velocities", "Positions"],
         ):
             ax.clear()
-            for i, data in enumerate(data_list):
-                ax.plot(
-                    self.times, data, c=colors[i % len(colors)], label=f"Oscillator {i}"
-                )
+            if title == "Forces":
+                for i, data in enumerate(data_list):
+                    ax.plot(
+                        self.times, data, c=colors[i % len(colors)], label=f"Spring {i}"
+                    )
+            else:
+                for i, data in enumerate(data_list):
+                    ax.plot(
+                        self.times, data, c=colors[i % len(colors)], label=f"Oscillator {i}"
+                    )
             ax.set_title(title)
             ax.set_xlabel("Time")
             ax.set_ylabel("Value")
@@ -431,5 +459,5 @@ class OscillatorsSimulation:
             self.animation_fig, animate, frames=range(0, states_number, 100)
         )
         # TODO: remove saving - it will be faster
-        ani.save("animation.gif", writer="imagemagick")
+        # ani.save("animation.gif", writer="Pillow")
         return ani

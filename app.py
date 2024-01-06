@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 from simulation import OscillatorsSimulation
 
 app = Flask(__name__)
-
+N_STATES = 100_000
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -32,7 +32,7 @@ def index():
             elastic_collisions=elastic_collisions,
             damping=damping_coefficient,
         )
-        ani = simulation.create_animation(5000)
+        ani = simulation.create_animation(N_STATES)
         plots = list(simulation.get_plots().values())[0]
 
         return render_template(
@@ -64,7 +64,7 @@ def index():
             damping=damping_coefficient,
         )
 
-        ani = simulation.create_animation(5000)
+        ani = simulation.create_animation(N_STATES)
         plots = list(simulation.get_plots().values())[0]
 
         # Default values for initial GET request
