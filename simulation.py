@@ -279,16 +279,6 @@ class OscillatorsSimulation:
                 break
             yield self.calc_next_state()
 
-    # def get_plots(self):
-    #     plot_images = {}
-
-    #     for plot_name, ax in zip(["phase", "force", "velocity", "position"], [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]):
-    #         img = BytesIO()
-            # ax.get_figure().savefig(img, format='png')
-    #         img.seek(0)
-    #         plot_images[plot_name] = base64.b64encode(img.getvalue()).decode('utf-8')
-        
-    #     return plot_images
 
     def get_plots(self):
         plot_images = {}

@@ -25,9 +25,6 @@ def index():
     plots = simulation.get_plots()
     oscillators_plot = list(plots.values())[0]
     
-    # Create Matplotlib Animation
-    simulation = OscillatorsSimulation([2,2], [10, 40, 10])
-    ani = simulation.create_animation(1000)
 
     return render_template('index.html', 
                            number_of_oscillators=number_of_oscillators,
