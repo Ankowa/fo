@@ -64,9 +64,13 @@ class OscillatorsSimulation:
 
         self.oscillator_masses = np.array(oscillator_masses, float)
         self.spring_constants = np.array(spring_constants, float)
-        
-        self.fig, axes = plt.subplots(5, 1, figsize=(10, 20))  # Adjust the layout as needed
-        self.ax, self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax = axes
+
+        # Create a separate figure for the main animation
+        self.animation_fig, self.ax = plt.subplots(figsize=(10, 5))
+
+        # Create another figure for the additional plots
+        self.plots_fig, (self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax) = plt.subplots(4, 1, figsize=(10, 20))
+
 
         # Parameters
         self.time_step = 0.005  # Time step
@@ -275,16 +279,33 @@ class OscillatorsSimulation:
                 break
             yield self.calc_next_state()
 
-    # Mockup data for demonstration
-    def get_plots(self):
-        
-        # Save plot to a BytesIO object
-        img = BytesIO()
-        self.fig.savefig(img, format='png')
-        img.seek(0)
+    # def get_plots(self):
+    #     plot_images = {}
 
-        # Encode the image to base64 for embedding in HTML
-        return base64.b64encode(img.getvalue()).decode('utf-8')
+    #     for plot_name, ax in zip(["phase", "force", "velocity", "position"], [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]):
+    #         img = BytesIO()
+            # ax.get_figure().savefig(img, format='png')
+    #         img.seek(0)
+    #         plot_images[plot_name] = base64.b64encode(img.getvalue()).decode('utf-8')
+        
+    #     return plot_images
+
+    def get_plots(self):
+        plot_images = {}
+
+        # Redraw and update the plots before saving
+        for ax in [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]:
+            ax.get_figure().canvas.draw()  # Force redraw of the canvas
+
+        for plot_name, ax in zip(["phase", "force", "velocity", "position"], [self.phase_ax, self.force_ax, self.velocity_ax, self.position_ax]):
+            img = BytesIO()
+            ax.get_figure().savefig(img, format='png', bbox_inches='tight')
+            # Save with tight bounding box
+            img.seek(0)
+            plot_images[plot_name] = base64.b64encode(img.getvalue()).decode('utf-8')
+
+        return plot_images
+
 
     def create_animation(self, states_number=1000):
         states_gen = self.gen_states(states_number)
@@ -374,7 +395,7 @@ class OscillatorsSimulation:
             self.position_ax.set_title('Positions of Oscillators')
 
 
-        ani = FuncAnimation(self.fig, animate, frames=range(0, states_number, 100))
+        ani = FuncAnimation(self.animation_fig, animate, frames=range(0, states_number, 100))
         # TODO: remove saving - it will be faster
         ani.save("animation.gif", writer="imagemagick")
         return ani

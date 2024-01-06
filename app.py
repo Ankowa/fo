@@ -22,8 +22,13 @@ def index():
     simulation = OscillatorsSimulation([2,2, 1], [10, 40, 10, 20])
     ani = simulation.create_animation(2000)
 
-    # Generate mockup plots
-    oscillator_plot = simulation.get_plots()
+    plots = simulation.get_plots()
+    print(plots)
+    oscillator_phases_plot,forces_plot,velocities_plot,positions_plot = plots.values()
+    
+    # Create Matplotlib Animation
+    simulation = OscillatorsSimulation([2,2], [10, 40, 10])
+    ani = simulation.create_animation(1000)
 
     return render_template('index.html', 
                            number_of_oscillators=number_of_oscillators,
@@ -31,7 +36,10 @@ def index():
                            damping_coefficient=damping_coefficient,
                            elastic_collisions=elastic_collisions,
                            positions=positions,
-                           oscillator_plot=oscillator_plot,
+                           oscillator_phases_plot=oscillator_phases_plot,
+                           forces_plot=forces_plot,
+                           velocities_plot=velocities_plot,
+                           positions_plot=positions_plot,
                            animation=ani.to_jshtml())
 
 if __name__ == '__main__':
