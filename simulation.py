@@ -27,9 +27,8 @@ class OscillatorsSimulation:
         oscillator_masses: list[int],
         springs_current_lens: Optional[list[int]] = None,
         spring_constants: Optional[list[int]] = None,
-        elastic_collisions: bool = False,
         damping: float = 0.0,
-        time_step: float = 0.005
+        time_step: float = 0.005,
     ):
         self.num_oscillators = len(oscillator_masses)
         self.num_springs = self.num_oscillators + 1
@@ -98,7 +97,6 @@ class OscillatorsSimulation:
         )
         self.break_states_generator = False
 
-        self.elastic_collisions = False
         assert damping >= 0, "Can't get negative damping"
         self.damping = damping
 
@@ -164,7 +162,9 @@ class OscillatorsSimulation:
         return oscillator_force
 
     @staticmethod
-    def get_indices_of_collisions(x: np.ndarray) -> list[np.ndarray]:
+    def get_indices_of_collisions(
+        xs: np.ndarray, total_length: int
+    ) -> list[np.ndarray]:
         """
         Calculates indices of collisions. Math:
         1.  calculates max from the left, min from the right for each element
@@ -183,6 +183,7 @@ class OscillatorsSimulation:
             we get [0, 0], [2, 2], [3, 3]
         Returns list of np.ndarrays, each array representing indices
         """
+        x = np.concatenate([[0], xs, [total_length]])
         mask = np.ones_like(x, dtype=bool)
 
         # 1
@@ -207,7 +208,7 @@ class OscillatorsSimulation:
         assert not np.array_equal(groups, [[]]), "No collisions found"
         return groups
 
-    def calc_not_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
+    def calc_collisions(self, collisions: list[np.ndarray], tmp_x: np.ndarray) -> None:
         """
         Calculates velocities of all masses being part of all nonelastic collisions
         Math: (for each collision): calculate total momentum, then calculate the velocity
@@ -217,39 +218,28 @@ class OscillatorsSimulation:
         versa if such collision occurrs)
         """
         for collision in collisions:
+            if 0 in collision or self.num_springs in collision:
+                is_zero = 0 in collision
+                if is_zero:
+                    collision = collision[collision != 0]
+                else:
+                    collision = collision[collision != self.num_springs]
+                collision = collision - 1
+                momentum = 0
+                self.current_state.oscillators_v[collision] = 0
+                self.current_state.oscillators_x[collision] = (
+                    0 if is_zero else self.total_length
+                )
+                continue
+            collision = collision - 1
             momentum = np.sum(
                 self.oscillator_masses[collision]
                 * self.current_state.oscillators_v[collision]
             )  # momentum
             v = momentum / np.sum(self.oscillator_masses[collision])  # group velocity
             self.current_state.oscillators_v[collision] = v
-            self.current_state.oscillators_x[collision] = np.mean(
-                self.current_state.oscillators_x[collision]
-            )  # group new position
-
-    def calc_elastic_collisions(self, collisions: list[np.ndarray]) -> None:
-        """
-        ONLY SUPPORTS 2 MASS COLLISION
-        Calculates velocities of all masses being part of all elastic collisions
-        Math: (for each collision): calc velocity using math from wikipedia:
-        https://en.wikipedia.org/wiki/Elastic_collision
-        Also substitute the positions of all the masses to one position (in order to
-        avoid mess like mass on the 4th place becoming mass on the 5th place and vice
-        versa if such collision occurrs)
-        """
-        for collision in collisions:
-            assert len(collision) == 2, "ONLY SUPPORTS 2 MASS COLLISION"
-
-            m1, m2 = self.oscillator_masses[collision]
-            u1, u2 = self.current_state.oscillators_v[collision]
-            # math from wiki
-
-            v1 = u1 * (m1 - m2) / (m1 + m2) + u2 * 2 * m2 / (m1 + m2)
-            v2 = -u2 * (m1 - m2) / (m1 + m2) + u2 * 2 * m1 / (m1 + m2)
-
-            self.current_state.oscillators_v[collision] = [v1, v2]
-            self.current_state.oscillators_x[collision] = np.mean(
-                self.current_state.oscillators_x[collision]
+            self.current_state.oscillators_x[collision] = min(
+                max(0, np.mean(tmp_x[collision])), self.total_length
             )  # group new position
 
     def calc_next_state(self):
@@ -266,14 +256,13 @@ class OscillatorsSimulation:
             + self.current_state.oscillators_v * self.time_step
         )
 
-        if ~np.all(
-            tmp_x[:-1] < tmp_x[1:]
-        ):  # masses' x coordinates are not sorted → collisions
-            col_groups = self.get_indices_of_collisions(tmp_x)
-            if self.elastic_collisions:
-                self.calc_elastic_collisions(col_groups)
-            else:
-                self.calc_not_elastic_collisions(col_groups)
+        if (
+            ~np.all(tmp_x[:-1] < tmp_x[1:])
+            or np.any(tmp_x <= 0)
+            or np.any(tmp_x >= self.total_length)
+        ):  # masses' x coordinates are not sorted or mass hit a wall → collisions
+            col_groups = self.get_indices_of_collisions(tmp_x, self.total_length)
+            self.calc_collisions(col_groups, tmp_x)
         else:
             self.current_state.oscillators_x += (
                 self.current_state.oscillators_v * self.time_step
@@ -307,7 +296,6 @@ class OscillatorsSimulation:
             yield self.calc_next_state()
 
     def get_plots(self):
-
         plot_images = {}
 
         # Plot for each oscillator
@@ -331,9 +319,8 @@ class OscillatorsSimulation:
             "#1ABC9C",  # Turquoise
             "#7D3C98",  # Plum
             "#A569BD",  # Lavender
-            "#D35400"   # Orange
+            "#D35400",  # Orange
         ]
-
 
         # Update and redraw phase, force, velocity, position plots
         for ax, data_list, title in zip(
@@ -345,17 +332,23 @@ class OscillatorsSimulation:
             if title == "Forces":
                 for i, data in enumerate(data_list):
                     ax.plot(
-                        self.times, data, c=colors[i % len(colors)], label=f"Spring {i}"
+                        self.times,
+                        data,
+                        c=colors[i % len(colors)],
+                        label=f"Spring {i+1}",
                     )
             else:
                 for i, data in enumerate(data_list):
                     ax.plot(
-                        self.times, data, c=colors[i % len(colors)], label=f"Oscillator {i}"
+                        self.times,
+                        data,
+                        c=colors[i % len(colors)],
+                        label=f"Oscillator {i+1}",
                     )
             ax.set_title(title)
-            ax.set_xlabel("Time")
+            ax.set_xlabel("Time (steps)")
             ax.set_ylabel("Value")
-            ax.legend(loc='upper right')
+            ax.legend(loc="upper right")
 
         # Save plots
         for plot_name, ax in zip(
@@ -428,8 +421,8 @@ class OscillatorsSimulation:
             self.ax.scatter(xs, np.zeros_like(xs), c="b")
             for x, num in zip(xs, np.arange(self.num_oscillators)):
                 self.ax.annotate(
-                    f"{num}",
-                    (x, 0),
+                    f"{num+1}",
+                    (x, num / self.num_oscillators / 2),
                     xytext=(0, 0),
                     textcoords="offset points",
                     ha="center",
@@ -457,7 +450,7 @@ class OscillatorsSimulation:
             self.position_ax.set_title("Positions of Oscillators")
 
         ani = FuncAnimation(
-            self.animation_fig, animate, frames=range(0, states_number, 100)
+            self.animation_fig, animate, frames=range(0, states_number, 10)
         )
         # TODO: remove saving - it will be faster
         # ani.save("animation.gif", writer="Pillow")
