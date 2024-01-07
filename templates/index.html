@@ -75,7 +75,7 @@
                 oscillatorInputsDiv.innerHTML += `
                     <div class="form-group">
                         <label>Mass ${i + 1}:</label>
-                        <input type="number" name="mass_${i + 1}" value="${default_masses[i] || 1}" required>
+                        <input type="number" name="mass_${i + 1}" value="${default_masses[i] || 1}" step="0.5" required>
                     </div>
                 `;
                 springInputsDiv.innerHTML += `
