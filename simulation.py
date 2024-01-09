@@ -242,6 +242,18 @@ class OscillatorsSimulation:
                 max(0, np.mean(tmp_x[collision])), self.total_length
             )  # group new position
 
+    def get_non_collisions(self, collisions: list[np.ndarray]) -> list[int]:
+        """
+        Returns indices of masses that are not part of any collision
+        """
+        collisions = np.concatenate(collisions)
+        if 0 in collisions:
+            collisions = collisions[collisions != 0]
+        if self.num_springs in collisions:
+            collisions = collisions[collisions != self.num_springs]
+        collisions = collisions - 1
+        return np.setdiff1d(np.arange(self.num_oscillators), collisions)
+
     def calc_next_state(self):
         oscillators_a = np.array(
             [
@@ -263,6 +275,8 @@ class OscillatorsSimulation:
         ):  # masses' x coordinates are not sorted or mass hit a wall → collisions
             col_groups = self.get_indices_of_collisions(tmp_x, self.total_length)
             self.calc_collisions(col_groups, tmp_x)
+            non_col = self.get_non_collisions(col_groups)
+            self.current_state.oscillators_x[non_col] = tmp_x[non_col]
         else:
             self.current_state.oscillators_x += (
                 self.current_state.oscillators_v * self.time_step
